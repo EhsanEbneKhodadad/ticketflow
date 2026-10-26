@@ -1,0 +1,71 @@
+name: Verify
+on:
+  push:
+    branches: [main, "feat/**", "fix/**"]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+      - run: dotnet restore apps/backend/TicketFlow.sln --locked-mode
+      - run: dotnet tool restore
+      - run: dotnet build apps/backend/TicketFlow.sln --no-restore --configuration Release
+      - run: dotnet format apps/backend/TicketFlow.sln --verify-no-changes --no-restore
+      - run: dotnet test apps/backend/TicketFlow.sln --no-restore --configuration Release
+      - name: Verify generated API contract
+        shell: bash
+        run: |
+          ASPNETCORE_ENVIRONMENT=Development dotnet apps/backend/src/TicketFlow.Api/bin/Release/net10.0/TicketFlow.Api.dll --urls http://localhost:5080 > api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:5080/health/live; then break; fi
+            sleep 1
+          done
+          pnpm api:generate
+          git diff --exit-code -- packages/api-client/src/schema.d.ts
+      - name: Validate Compose
+        run: docker compose --env-file .env.example --profile app --profile search config --quiet
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start stack
+        run: |
+          cp .env.example .env
+          docker compose --profile app up -d --build --wait --wait-timeout 180
+      - name: Check API and proxy
+        run: |
+          curl --retry 10 --retry-connrefused --retry-delay 2 -fsS http://localhost:5080/health/ready
+          curl -fsS http://localhost:3000/api/v1/system/info
+          curl -fsS http://localhost:3000/api/health
+      - name: Logs
+        if: failure()
+        run: docker compose --profile app logs --no-color
+      - name: Stop stack
+        if: always()
+        run: docker compose --profile app down

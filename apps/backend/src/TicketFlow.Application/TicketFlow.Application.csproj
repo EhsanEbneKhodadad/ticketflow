@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../TicketFlow.Domain/TicketFlow.Domain.csproj" />
+  </ItemGroup>
+</Project>

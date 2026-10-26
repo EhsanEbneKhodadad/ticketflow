@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+coverage/
+**/bin/
+**/obj/
+**/TestResults/
+.cache/
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+.vs/
+.idea/
+.superpowers/
+*.tsbuildinfo

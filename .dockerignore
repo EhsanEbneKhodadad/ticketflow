@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/bin
+**/obj
+**/coverage
+.git
+.cache
+.env
+.env.*
+!.env.example
+.superpowers

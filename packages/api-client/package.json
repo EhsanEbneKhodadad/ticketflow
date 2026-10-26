@@ -1,0 +1,17 @@
+{
+  "name": "@ticketflow/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "openapi-typescript http://localhost:5080/openapi/v1.json -o src/schema.d.ts"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "openapi-typescript": "7.10.1"
+  }
+}

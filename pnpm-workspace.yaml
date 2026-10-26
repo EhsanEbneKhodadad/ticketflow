@@ -1,0 +1,9 @@
+packages:
+  - apps/web
+  - packages/*
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver
+injectWorkspacePackages: true
+dedupeInjectedDeps: false
+hoistWorkspacePackages: false

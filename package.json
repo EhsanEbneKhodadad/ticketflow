@@ -1,0 +1,25 @@
+{
+  "name": "ticketflow",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @ticketflow/web dev",
+    "build": "pnpm --filter @ticketflow/web build",
+    "lint": "pnpm --filter @ticketflow/web lint",
+    "typecheck": "pnpm --filter @ticketflow/api-client typecheck && pnpm --filter @ticketflow/web typecheck",
+    "test": "pnpm --filter @ticketflow/web test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "api:generate": "pnpm --filter @ticketflow/api-client generate && node scripts/sync-api-client.mjs",
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "stack:up": "docker compose --profile app --profile search up -d --build --wait"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
+  }
+}
