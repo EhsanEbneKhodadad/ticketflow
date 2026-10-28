@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Antiforgery;
 using TicketFlow.Api.Errors;
 using TicketFlow.Api.Features.Auth;
+using TicketFlow.Api.Features.Administration;
 using TicketFlow.Api.Features.Attachments;
 using TicketFlow.Api.Features.Tickets;
 using TicketFlow.Api.Features.Search;
@@ -83,6 +84,7 @@ app.MapAuth();
 app.MapTickets();
 app.MapSearch();
 app.MapAttachments();
+app.MapAdministration();
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")) app.MapOpenApi();
 await app.RunAsync();
 

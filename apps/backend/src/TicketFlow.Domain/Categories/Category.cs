@@ -8,6 +8,8 @@ public sealed class Category
 
     private Category() { }
 
+    public void Rename(string name, string slug) { Name = name; Slug = slug; }
+
     public Category(Guid id, string name, string slug)
     {
         Id = id;
