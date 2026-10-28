@@ -14,7 +14,9 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             RuleException { Kind: ErrorKind.Forbidden } => 403,
             RuleException { Kind: ErrorKind.NotFound } => 404,
             RuleException { Kind: ErrorKind.Conflict } => 409,
+            RuleException { Kind: ErrorKind.Unavailable } => 503,
             BadHttpRequestException => 400,
+            InvalidDataException => 400,
             _ => 500
         };
         if (status == 500) logger.LogError(error, "An unexpected API error occurred.");

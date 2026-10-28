@@ -14,6 +14,7 @@ public sealed class Ticket
 {
     private readonly List<TicketMessage> _messages = [];
     private readonly List<TicketAudit> _audit = [];
+    private readonly List<TicketAttachment> _attachments = [];
     public Guid Id { get; private set; }
     public long Number { get; private set; }
     public string Title { get; private set; } = "";
@@ -31,6 +32,7 @@ public sealed class Ticket
     public DateTimeOffset UpdatedAt { get; private set; }
     public IReadOnlyList<TicketMessage> Messages => _messages;
     public IReadOnlyList<TicketAudit> Audit => _audit;
+    public IReadOnlyList<TicketAttachment> Attachments => _attachments;
 
     private Ticket() { }
 
@@ -110,6 +112,27 @@ public sealed class Ticket
         body = Text(body, 1, 10000, "Reply");
         _messages.Add(new TicketMessage(Guid.NewGuid(), Id, actor.Id, actor.Name, actor.Role, body, internalNote, DateTimeOffset.UtcNow));
         Changed(actor, internalNote ? "internalNoteAdded" : "replyAdded", internalNote ? "Internal note added" : "Public reply added", internalNote);
+    }
+
+    public TicketAttachment Attach(Actor actor, string fileName, string contentType, long size, string objectKey, Guid? messageId, int version)
+    {
+        Guard(actor, version);
+        if (Status == TicketStatus.Closed)
+            throw new RuleException(ErrorKind.Conflict, "Reopen the ticket before uploading attachments.");
+        if (_attachments.Count >= 10)
+            throw new RuleException(ErrorKind.Conflict, "A ticket can contain up to ten attachments.");
+        var message = messageId.HasValue ? _messages.SingleOrDefault(m => m.Id == messageId) : null;
+        if (messageId.HasValue && message is null)
+            throw new RuleException(ErrorKind.Validation, "Choose a reply on this ticket.");
+        if (message?.Internal == true && !actor.IsStaff)
+            throw new RuleException(ErrorKind.NotFound, "Reply not found.");
+        if (size is <= 0 or > 10 * 1024 * 1024)
+            throw new RuleException(ErrorKind.Validation, "Files must contain 1 byte to 10 MiB.");
+        var attachment = new TicketAttachment(Guid.NewGuid(), Id, messageId, fileName, contentType, size,
+            objectKey, message?.Internal == true, actor.Id, DateTimeOffset.UtcNow);
+        _attachments.Add(attachment);
+        Changed(actor, "attachmentAdded", "Attachment added", attachment.Internal);
+        return attachment;
     }
 
     private void SetDetails(string title, string description, Guid category, string[] tags)

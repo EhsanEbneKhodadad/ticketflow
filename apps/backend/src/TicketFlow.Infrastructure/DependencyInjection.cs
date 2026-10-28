@@ -7,6 +7,8 @@ using Microsoft.Extensions.Hosting;
 using TicketFlow.Application.Abstractions;
 using TicketFlow.Application.Auth;
 using TicketFlow.Application.Tickets;
+using TicketFlow.Application.Attachments;
+using TicketFlow.Infrastructure.Attachments;
 using TicketFlow.Infrastructure.Identity;
 using TicketFlow.Infrastructure.Persistence;
 
@@ -40,6 +42,8 @@ public static class DependencyInjection
         services.AddScoped<IPasswordResetSender, SmtpPasswordResetSender>();
         services.AddScoped<ITicketStore, TicketStore>();
         services.AddScoped<TicketWorkflow>();
+        services.AddScoped<IAttachmentStorage, S3AttachmentStorage>();
+        services.AddScoped<AttachmentWorkflow>();
         services.AddScoped<IDevelopmentSeeder, DevelopmentSeeder>();
         return services;
     }

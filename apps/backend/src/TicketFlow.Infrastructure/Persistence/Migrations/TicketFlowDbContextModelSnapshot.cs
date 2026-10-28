@@ -279,6 +279,59 @@ namespace TicketFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("tickets", (string)null);
                 });
 
+            modelBuilder.Entity("TicketFlow.Domain.Tickets.TicketAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)");
+
+                    b.Property<bool>("Internal")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique();
+
+                    b.HasIndex("MessageId", "TicketId");
+
+                    b.HasIndex("TicketId", "CreatedAt");
+
+                    b.ToTable("ticket_attachments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_attachment_size", "\"Size\" > 0 AND \"Size\" <= 10485760");
+                        });
+                });
+
             modelBuilder.Entity("TicketFlow.Domain.Tickets.TicketAudit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -559,6 +612,21 @@ namespace TicketFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TicketFlow.Domain.Tickets.TicketAttachment", b =>
+                {
+                    b.HasOne("TicketFlow.Domain.Tickets.Ticket", null)
+                        .WithMany("Attachments")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TicketFlow.Domain.Tickets.TicketMessage", null)
+                        .WithMany()
+                        .HasForeignKey("MessageId", "TicketId")
+                        .HasPrincipalKey("Id", "TicketId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("TicketFlow.Domain.Tickets.TicketAudit", b =>
                 {
                     b.HasOne("TicketFlow.Domain.Tickets.Ticket", null)
@@ -603,6 +671,8 @@ namespace TicketFlow.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("TicketFlow.Domain.Tickets.Ticket", b =>
                 {
+                    b.Navigation("Attachments");
+
                     b.Navigation("Audit");
 
                     b.Navigation("Messages");

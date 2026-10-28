@@ -1,0 +1,9 @@
+# Private ticket attachments
+
+Use the official AWS SDK for .NET S3 adapter and a private bucket. The API validates file size, extension/signature or strict UTF-8 content, sanitizes display names, generates random object keys, and handles both upload and authorized download. The browser never receives object keys, credentials, public URLs or presigned URLs. Downloads force Content-Disposition attachment, nosniff and private/no-store.
+
+Attachments belong to a ticket and optionally an existing message on that same ticket (composite foreign key). The aggregate derives message privacy, includes internal attachments in the ten-file limit, rejects closed tickets and increments the optimistic ticket version. EF saves metadata, version and the privacy-aware audit record in one PostgreSQL transaction. A losing concurrent upload rolls back metadata and deletes its uploaded object. Cleanup also runs with a separate bounded cancellation deadline after canceled requests or upload/save failures. Cleanup failures log a generic operational error; external object storage and PostgreSQL cannot commit atomically, so failed cleanup requires operational reconciliation.
+
+Keep TicketView stable. Separate attachment list/upload/download APIs enforce ticket ownership and internal-note access again on every request. One multipart file up to 10 MiB is accepted per upload; a route-specific Kestrel limit of 10 MiB plus 64 KiB and form/header/field limits run before antiforgery parsing. Other API requests retain the 64 KiB global limit. Existing header-based CSRF protection applies to uploads. S3 transport failures return generic 503 Problem Details without vendor messages; missing objects return 404.
+
+No previews, public access, content indexing, user-facing deletion or malware scanning are implemented. Signature checks and strict text decoding are format checks, not malware detection.

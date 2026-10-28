@@ -37,7 +37,7 @@ dotnet restore apps/backend/TicketFlow.sln --locked-mode
 pnpm infra:up
 ```
 
-Set ConnectionStrings\_\_Database in each backend terminal to match the local PostgreSQL credentials. Also set DOTNET_ENVIRONMENT and ASPNETCORE_ENVIRONMENT to Development. See docs/runbooks/local-development.md for exact PowerShell commands.
+Set ConnectionStrings\_\_Database in each backend terminal to match the local PostgreSQL credentials. Attachment uploads also require the Storage settings described in the local development runbook. Also set DOTNET_ENVIRONMENT and ASPNETCORE_ENVIRONMENT to Development. See docs/runbooks/local-development.md for exact PowerShell commands.
 
 Apply the schema and seed data with Seed\_\_Enabled=true and:
 

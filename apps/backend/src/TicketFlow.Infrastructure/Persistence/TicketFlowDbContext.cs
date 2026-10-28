@@ -74,6 +74,19 @@ public sealed class TicketFlowDbContext(DbContextOptions<TicketFlowDbContext> op
         ticket.Navigation(t => t.Messages).HasField("_messages").UsePropertyAccessMode(PropertyAccessMode.Field);
         ticket.HasMany(t => t.Audit).WithOne().HasForeignKey(e => e.TicketId).OnDelete(DeleteBehavior.Cascade);
         ticket.Navigation(t => t.Audit).HasField("_audit").UsePropertyAccessMode(PropertyAccessMode.Field);
+        ticket.HasMany(t => t.Attachments).WithOne().HasForeignKey(a => a.TicketId).OnDelete(DeleteBehavior.Cascade);
+        ticket.Navigation(t => t.Attachments).HasField("_attachments").UsePropertyAccessMode(PropertyAccessMode.Field);
+        var attachment = modelBuilder.Entity<TicketAttachment>();
+        attachment.ToTable("ticket_attachments", table => table.HasCheckConstraint("CK_attachment_size", "\"Size\" > 0 AND \"Size\" <= 10485760"));
+        attachment.HasKey(a => a.Id);
+        attachment.Property(a => a.Id).ValueGeneratedNever();
+        attachment.Property(a => a.FileName).HasMaxLength(180).IsRequired();
+        attachment.Property(a => a.ContentType).HasMaxLength(100).IsRequired();
+        attachment.Property(a => a.ObjectKey).HasMaxLength(200).IsRequired();
+        attachment.HasIndex(a => a.ObjectKey).IsUnique();
+        attachment.HasIndex(a => new { a.TicketId, a.CreatedAt });
+        attachment.HasOne<TicketMessage>().WithMany().HasForeignKey(a => new { a.MessageId, a.TicketId })
+            .HasPrincipalKey(m => new { m.Id, m.TicketId }).OnDelete(DeleteBehavior.Restrict);
         var message = modelBuilder.Entity<TicketMessage>();
         message.ToTable("ticket_messages");
         message.HasKey(m => m.Id);

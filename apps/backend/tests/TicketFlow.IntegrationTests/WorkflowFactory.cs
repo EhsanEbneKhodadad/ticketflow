@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TicketFlow.Application.Abstractions;
 using TicketFlow.Application.Auth;
+using TicketFlow.Application.Attachments;
 using TicketFlow.Infrastructure.Persistence;
 
 namespace TicketFlow.IntegrationTests;
@@ -23,6 +24,7 @@ public sealed class ResetCapture : IPasswordResetSender
 public sealed class WorkflowFactory(string connection) : WebApplicationFactory<Program>
 {
     public ResetCapture Reset { get; } = new();
+    public AttachmentStorageCapture Storage { get; } = new();
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -36,6 +38,8 @@ public sealed class WorkflowFactory(string connection) : WebApplicationFactory<P
         {
             services.RemoveAll<IPasswordResetSender>();
             services.AddSingleton<IPasswordResetSender>(Reset);
+            services.RemoveAll<IAttachmentStorage>();
+            services.AddSingleton<IAttachmentStorage>(Storage);
         });
     }
 

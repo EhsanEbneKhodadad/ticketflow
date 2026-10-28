@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Antiforgery;
 using TicketFlow.Api.Errors;
 using TicketFlow.Api.Features.Auth;
+using TicketFlow.Api.Features.Attachments;
 using TicketFlow.Api.Features.Tickets;
 using TicketFlow.Api.Security;
 using TicketFlow.Infrastructure.Identity;
@@ -50,6 +51,7 @@ app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+app.UseAttachmentBodyLimit();
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/api/v1")
@@ -76,6 +78,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 app.MapSystemInfo();
 app.MapAuth();
 app.MapTickets();
+app.MapAttachments();
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")) app.MapOpenApi();
 await app.RunAsync();
 
