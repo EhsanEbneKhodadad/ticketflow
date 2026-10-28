@@ -87,6 +87,24 @@ public sealed class ElasticsearchSearchTests
         await projection.ReconcileAsync(default);
         Assert.Equal(0, (await search.SearchAsync(customer, new(Q: "quantum"), default)).Total);
         Assert.Equal(1, (await search.SearchAsync(customer, new(Q: "neutrino"), default)).Total);
+        // A deletion after EnsureIndex must not let bulk auto-create a dynamic GUID/text mapping.
+        var index = scope.ServiceProvider.GetRequiredService<ITicketSearchIndex>();
+        var source = scope.ServiceProvider.GetRequiredService<ISearchTicketStore>();
+        await index.EnsureIndexAsync(default);
+        (await engine.Http.DeleteAsync(engine.Index)).EnsureSuccessStatusCode();
+        await index.UpsertAsync(await source.ReadBatchAsync(0, await source.LastNumberAsync(default), 100, default), default);
+        using (var mapping = JsonDocument.Parse(await engine.Http.GetStringAsync(engine.Index + "/_mapping")))
+        {
+            var definition = mapping.RootElement.GetProperty(engine.Index).GetProperty("mappings");
+            Assert.Equal("strict", definition.GetProperty("dynamic").GetString());
+            var fields = definition.GetProperty("properties");
+            Assert.Equal("keyword", fields.GetProperty("requesterId").GetProperty("type").GetString());
+            Assert.Equal("keyword", fields.GetProperty("status").GetProperty("type").GetString());
+            Assert.Equal("keyword", fields.GetProperty("agentId").GetProperty("type").GetString());
+            Assert.Equal("date", fields.GetProperty("createdAt").GetProperty("type").GetString());
+        }
+        await projection.ReconcileAsync(default);
+        Assert.Equal(first.Id, Assert.Single((await search.SearchAsync(customer, new(Q: "orbital"), default)).Items).Ticket.Id);
         await db.Tickets.Where(t => t.Id == first.Id).ExecuteUpdateAsync(updates => updates.SetProperty(t => t.RequesterId, agent.Id));
         Assert.Equal(0, (await search.SearchAsync(customer, new(Q: "orbital"), default)).Total);
         Assert.Equal(0, (await search.SearchAsync(customer, new(Q: "orbital", Page: 2, PageSize: 1), default)).Total);
@@ -163,8 +181,9 @@ public sealed class ElasticsearchSearchTests
         {
             try
             {
-                // This random test-owned name is the only cleanup target; never delete a configured/shared index.
+                // Clean only this test's exact random index and its deterministic, equally scoped template.
                 using var response = await Http.DeleteAsync(Index);
+                using var template = await Http.DeleteAsync("_index_template/ticketflow-search-" + Index);
             }
             finally
             {

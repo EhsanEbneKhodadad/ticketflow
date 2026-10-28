@@ -14,6 +14,31 @@ public sealed class ElasticsearchTicketIndex(HttpClient http, SearchSettings set
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) }
     };
 
+    private static readonly object IndexDefinition = new
+    {
+        settings = new { number_of_shards = 1, number_of_replicas = 0 },
+        mappings = new
+        {
+            dynamic = "strict",
+            properties = new Dictionary<string, object>
+            {
+                ["id"] = new { type = "keyword" },
+                ["number"] = new { type = "long" },
+                ["ticketNumber"] = new { type = "keyword" },
+                ["title"] = new { type = "text" },
+                ["description"] = new { type = "text" },
+                ["tags"] = new { type = "text" },
+                ["publicReplies"] = new { type = "text" },
+                ["requesterId"] = new { type = "keyword" },
+                ["createdAt"] = new { type = "date" },
+                ["status"] = new { type = "keyword" },
+                ["priority"] = new { type = "keyword" },
+                ["categoryId"] = new { type = "keyword" },
+                ["agentId"] = new { type = "keyword" }
+            }
+        }
+    };
+
     public Task<IReadOnlyList<Guid>> SearchAsync(Actor actor, TicketSearchQuery query, CancellationToken ct) => ExecuteAsync<IReadOnlyList<Guid>>(async () =>
     {
         var text = query.Q?.Trim();
@@ -62,30 +87,11 @@ public sealed class ElasticsearchTicketIndex(HttpClient http, SearchSettings set
 
     public Task EnsureIndexAsync(CancellationToken ct) => ExecuteAsync(async () =>
     {
+        await EnsureTemplateAsync(ct);
         using var exists = await SendAsync(HttpMethod.Head, "", null, ct);
         if (exists.IsSuccessStatusCode) return true;
         if (exists.StatusCode != HttpStatusCode.NotFound) throw Unavailable();
-        var properties = new Dictionary<string, object>
-        {
-            ["id"] = new { type = "keyword" },
-            ["number"] = new { type = "long" },
-            ["ticketNumber"] = new { type = "keyword" },
-            ["title"] = new { type = "text" },
-            ["description"] = new { type = "text" },
-            ["tags"] = new { type = "text" },
-            ["publicReplies"] = new { type = "text" },
-            ["requesterId"] = new { type = "keyword" },
-            ["createdAt"] = new { type = "date" },
-            ["status"] = new { type = "keyword" },
-            ["priority"] = new { type = "keyword" },
-            ["categoryId"] = new { type = "keyword" },
-            ["agentId"] = new { type = "keyword" }
-        };
-        using var create = await SendAsync(HttpMethod.Put, "", Body(new
-        {
-            settings = new { number_of_shards = 1, number_of_replicas = 0 },
-            mappings = new { dynamic = "strict", properties }
-        }), ct);
+        using var create = await SendAsync(HttpMethod.Put, "", Body(IndexDefinition), ct);
         using var result = JsonDocument.Parse(await create.Content.ReadAsStringAsync(ct));
         if (create.StatusCode == HttpStatusCode.BadRequest && result.RootElement.GetProperty("error").GetProperty("type").GetString() == "resource_already_exists_exception")
             return true;
@@ -97,6 +103,7 @@ public sealed class ElasticsearchTicketIndex(HttpClient http, SearchSettings set
     public Task UpsertAsync(IReadOnlyList<PublicTicketDocument> documents, CancellationToken ct) => ExecuteAsync(async () =>
     {
         if (documents.Count == 0) return true;
+        await EnsureTemplateAsync(ct);
         var data = new StringBuilder();
         foreach (var document in documents)
         {
@@ -110,9 +117,25 @@ public sealed class ElasticsearchTicketIndex(HttpClient http, SearchSettings set
         return true;
     }, ct);
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content, CancellationToken ct)
+    private async Task EnsureTemplateAsync(CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(method, settings.Endpoint.AbsoluteUri.TrimEnd('/') + "/" + settings.Index + path) { Content = content };
+        using var response = await SendRequestAsync(HttpMethod.Put, "/_index_template/ticketflow-search-" + settings.Index, Body(new
+        {
+            index_patterns = new[] { settings.Index },
+            priority = 500,
+            template = IndexDefinition
+        }), ct);
+        Success(response);
+        using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        if (!result.RootElement.GetProperty("acknowledged").GetBoolean()) throw Unavailable();
+    }
+
+    private Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content, CancellationToken ct) =>
+        SendRequestAsync(method, "/" + settings.Index + path, content, ct);
+
+    private async Task<HttpResponseMessage> SendRequestAsync(HttpMethod method, string path, HttpContent? content, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(method, settings.Endpoint.AbsoluteUri.TrimEnd('/') + path) { Content = content };
         return await http.SendAsync(request, ct);
     }
 

@@ -102,13 +102,26 @@ public sealed class SearchHttpTests
     public async Task Bootstrap_creates_strict_public_mapping_and_tolerates_concurrent_creation(bool race)
     {
         var requests = 0;
+        string? template = null;
         using var http = new HttpClient(new Handler(async (request, ct) =>
         {
             requests++;
+            if (request.RequestUri?.AbsolutePath == "/_index_template/ticketflow-search-test-index")
+            {
+                Assert.Equal(1, requests);
+                Assert.Equal(HttpMethod.Put, request.Method);
+                using var definition = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+                Assert.Equal("test-index", Assert.Single(definition.RootElement.GetProperty("index_patterns").EnumerateArray()).GetString());
+                Assert.Equal(500, definition.RootElement.GetProperty("priority").GetInt32());
+                template = definition.RootElement.GetProperty("template").GetRawText();
+                return Response(HttpStatusCode.OK, "{\"acknowledged\":true}");
+            }
+            Assert.NotNull(template);
             Assert.Equal("/test-index", request.RequestUri?.AbsolutePath);
             if (request.Method == HttpMethod.Head) return Response(HttpStatusCode.NotFound, "");
             Assert.Equal(HttpMethod.Put, request.Method);
             using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+            Assert.Equal(template, body.RootElement.GetRawText());
             Assert.Equal("strict", body.RootElement.GetProperty("mappings").GetProperty("dynamic").GetString());
             var fields = body.RootElement.GetProperty("mappings").GetProperty("properties");
             Assert.Equal("keyword", fields.GetProperty("requesterId").GetProperty("type").GetString());
@@ -119,6 +132,58 @@ public sealed class SearchHttpTests
                 : Response(HttpStatusCode.OK, "{\"acknowledged\":true}");
         }));
         await new ElasticsearchTicketIndex(http, Enabled).EnsureIndexAsync(default);
+        Assert.Equal(3, requests);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Recovery_template_is_installed_before_bulk_and_failure_prevents_writes(bool failure)
+    {
+        var requests = 0;
+        using var http = new HttpClient(new Handler(async (request, ct) =>
+        {
+            requests++;
+            if (requests == 1)
+            {
+                Assert.Equal("/_index_template/ticketflow-search-test-index", request.RequestUri?.AbsolutePath);
+                Assert.Equal(HttpMethod.Put, request.Method);
+                using var definition = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+                Assert.Equal("test-index", Assert.Single(definition.RootElement.GetProperty("index_patterns").EnumerateArray()).GetString());
+                var fields = definition.RootElement.GetProperty("template").GetProperty("mappings").GetProperty("properties");
+                Assert.Equal("keyword", fields.GetProperty("requesterId").GetProperty("type").GetString());
+                Assert.Equal("keyword", fields.GetProperty("status").GetProperty("type").GetString());
+                return failure ? Response(HttpStatusCode.Forbidden, "denied") : Response(HttpStatusCode.OK, "{\"acknowledged\":true}");
+            }
+            Assert.Equal("/test-index/_bulk", request.RequestUri?.AbsolutePath);
+            return Response(HttpStatusCode.OK, "{\"errors\":false,\"items\":[]}");
+        }));
+        var index = new ElasticsearchTicketIndex(http, Enabled);
+        var document = new PublicTicketDocument(Guid.NewGuid(), 1001, "TKT-1001", "Title", "Description", [], [], Customer.Id,
+            DateTimeOffset.UtcNow, TicketStatus.Open, TicketPriority.Medium, Guid.NewGuid(), null);
+        if (failure)
+            Assert.Equal(ErrorKind.Unavailable, (await Assert.ThrowsAsync<RuleException>(() => index.UpsertAsync([document], default))).Kind);
+        else await index.UpsertAsync([document], default);
+        Assert.Equal(failure ? 1 : 2, requests);
+    }
+
+    [Fact]
+    public async Task Existing_index_still_installs_recovery_template_before_the_existence_check()
+    {
+        var requests = 0;
+        using var http = new HttpClient(new Handler((request, _) =>
+        {
+            requests++;
+            if (requests == 1)
+            {
+                Assert.Equal("/_index_template/ticketflow-search-test-index", request.RequestUri?.AbsolutePath);
+                return Task.FromResult(Response(HttpStatusCode.OK, "{\"acknowledged\":true}"));
+            }
+            Assert.Equal(HttpMethod.Head, request.Method);
+            Assert.Equal("/test-index", request.RequestUri?.AbsolutePath);
+            return Task.FromResult(Response(HttpStatusCode.OK, ""));
+        }));
+        await new ElasticsearchTicketIndex(http, Enabled).EnsureIndexAsync(default);
         Assert.Equal(2, requests);
     }
 
@@ -127,6 +192,8 @@ public sealed class SearchHttpTests
     {
         using var http = new HttpClient(new Handler(async (request, ct) =>
         {
+            if (request.RequestUri?.AbsolutePath == "/_index_template/ticketflow-search-test-index")
+                return Response(HttpStatusCode.OK, "{\"acknowledged\":true}");
             Assert.EndsWith("/_bulk?refresh=wait_for", request.RequestUri?.AbsoluteUri);
             Assert.Equal("application/x-ndjson", request.Content!.Headers.ContentType?.MediaType);
             var body = await request.Content.ReadAsStringAsync(ct);
