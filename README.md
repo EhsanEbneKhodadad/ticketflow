@@ -99,7 +99,7 @@ Read [architecture](docs/architecture/overview.md), [milestone plan](docs/milest
 
 docker compose down preserves volumes. Removing volumes deletes local data. Local credentials and loopback bindings are unsuitable for public hosting.
 
-Next: attachments and search; jobs and notifications; dashboards and portfolio presentation; budgeted AWS deployment.
+Milestones 4 and 5 add durable email jobs, customer/staff dashboards, and administrator tools. See [jobs operations](docs/runbooks/milestone-4-jobs.md), [Milestone 4 verification](docs/milestone-4-verification.md), and [Milestone 5 verification](docs/milestone-5-verification.md). The next planned milestone is budgeted AWS deployment.
 
 ## Verification status
 
@@ -116,3 +116,7 @@ See [API setup](docs/runbooks/milestone-2-api.md), [Milestone 2 scope](docs/mile
 ## Durable jobs and notifications
 
 See [the jobs runbook](docs/runbooks/milestone-4-jobs.md) for explicit Hangfire bootstrap, reminder and escalation defaults, retries, and failure replay.
+
+## Dashboards and administration
+
+Customers see only their own ticket metrics. Staff dashboards show the shared queue, and administrators can manage categories and roles through the protected `/admin` workspace. See [the Milestone 5 case study](docs/milestone-5.md) for the scope and design decisions.
