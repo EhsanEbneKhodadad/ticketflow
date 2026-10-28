@@ -71,7 +71,10 @@ describe("Milestone 3 private attachments", () => {
       });
     cy.wait("@upload").its("response.statusCode").should("eq", 201);
     cy.get('[aria-label="Download reply-evidence.txt"]').should("be.visible");
-    cy.scrollTo("top");
+    cy.get('section[aria-label="Reply attachments"]')
+      .last()
+      .scrollIntoView({ offset: { top: -220, left: 0 } })
+      .should("be.visible");
     cy.screenshot("m3-reply-attachments", { capture: "viewport" });
     // Capture a stale ticket version by changing the real ticket while the form remains mounted.
     select(

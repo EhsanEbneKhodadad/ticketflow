@@ -168,8 +168,12 @@ export function AttachmentPanel({
               <span className="attachment-name">
                 {file.fileName}
                 <small>
-                  {(Number(file.size) / 1024).toFixed(1)} KiB ·{" "}
-                  {file.contentType}
+                  {Number(file.size) < 1024
+                    ? `${file.size} bytes`
+                    : Number(file.size) < 1048576
+                      ? `${(Number(file.size) / 1024).toFixed(1)} KiB`
+                      : `${(Number(file.size) / 1048576).toFixed(1)} MiB`}{" "}
+                  · {file.contentType}
                 </small>
               </span>
               <Button

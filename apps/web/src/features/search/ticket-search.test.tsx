@@ -1,10 +1,17 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TicketSearch, SearchSnippet } from "./ticket-search";
 const push = jest.fn();
+let mockRole = "Customer";
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 jest.mock("@/features/auth/auth-provider", () => ({
-  useAuth: () => ({ user: { id: "customer", role: "Customer" } }),
+  useAuth: () => ({ user: { id: "customer", role: mockRole } }),
 }));
 function mount(params: Record<string, string> = {}) {
   const client = new QueryClient({
@@ -19,6 +26,7 @@ function mount(params: Record<string, string> = {}) {
   return client;
 }
 beforeEach(() => {
+  mockRole = "Customer";
   push.mockReset();
   global.fetch = jest.fn(
     async (path) =>
@@ -130,4 +138,74 @@ it("explains a search outage and allows retry while linking to ticket browsing",
     "/tickets",
   );
   expect(screen.getByRole("button", { name: "Retry search" })).toBeVisible();
+});
+
+it("restores URL category and agent selections after delayed options without losing a dirty draft", async () => {
+  mockRole = "Agent";
+  const categoryId = "aabed648-e725-4b50-93c1-2cc6394c1941";
+  const agentId = "6f4457e5-616d-4937-85fd-bd73cc741014";
+  let resolveCategories!: (response: Response) => void;
+  let resolveAgents!: (response: Response) => void;
+  global.fetch = jest.fn((path) => {
+    if (String(path).endsWith("/categories"))
+      return new Promise<Response>((resolve) => {
+        resolveCategories = resolve;
+      });
+    if (String(path).endsWith("/agents"))
+      return new Promise<Response>((resolve) => {
+        resolveAgents = resolve;
+      });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+        candidateLimit: 1000,
+      }),
+    } as Response);
+  });
+  mount({ q: "original", categoryId, agentId });
+  await waitFor(() => expect(resolveCategories).toBeDefined());
+  await waitFor(() => expect(resolveAgents).toBeDefined());
+  expect(
+    screen.queryByRole("option", { name: "General" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("option", { name: "Jordan Lee" }),
+  ).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Keywords or ticket number"), {
+    target: { value: "draft in progress" },
+  });
+  await act(async () =>
+    resolveCategories({
+      ok: true,
+      status: 200,
+      json: async () => [{ id: categoryId, name: "General" }],
+    } as Response),
+  );
+  await screen.findByRole("option", { name: "General" });
+  expect(screen.getByLabelText("Category")).toHaveValue(categoryId);
+  await act(async () =>
+    resolveAgents({
+      ok: true,
+      status: 200,
+      json: async () => [{ id: agentId, name: "Jordan Lee" }],
+    } as Response),
+  );
+  await screen.findByRole("option", { name: "Jordan Lee" });
+  expect(screen.getByLabelText("Assigned agent")).toHaveValue(agentId);
+  expect(screen.getByLabelText("Keywords or ticket number")).toHaveValue(
+    "draft in progress",
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Search public content" }),
+  );
+  await waitFor(() =>
+    expect(push).toHaveBeenCalledWith(
+      `/search?q=draft+in+progress&categoryId=${categoryId}&agentId=${agentId}&sort=relevance&page=1`,
+    ),
+  );
 });

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -45,7 +45,7 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
   const principal = user?.id;
   const isCurrent = () =>
     !!principal && client.getQueryData<User>(["session"])?.id === principal;
-  const { register, handleSubmit } = useForm<Record<string, string>>({
+  const { register, handleSubmit, control } = useForm<Record<string, string>>({
     defaultValues: { ...params, sort: params.sort ?? "relevance" },
   });
   const query = useQuery({
@@ -142,26 +142,40 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
           </div>
           <div className="form-field">
             <label htmlFor="search-category">Category</label>
-            <select id="search-category" {...register("categoryId")}>
-              <option value="">All categories</option>
-              {categories.data?.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+            <Controller
+              name="categoryId"
+              control={control}
+              defaultValue={params.categoryId ?? ""}
+              render={({ field }) => (
+                <select id="search-category" {...field}>
+                  <option value="">All categories</option>
+                  {categories.data?.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
           </div>
           {user?.role !== "Customer" && (
             <div className="form-field">
               <label htmlFor="search-agent">Assigned agent</label>
-              <select id="search-agent" {...register("agentId")}>
-                <option value="">Any agent</option>
-                {agents.data?.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
+              <Controller
+                name="agentId"
+                control={control}
+                defaultValue={params.agentId ?? ""}
+                render={({ field }) => (
+                  <select id="search-agent" {...field}>
+                    <option value="">Any agent</option>
+                    {agents.data?.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
             </div>
           )}
           <div className="form-field">
