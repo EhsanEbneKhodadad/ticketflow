@@ -6,14 +6,28 @@ Milestone 3 builds on the unmerged Milestone 2 frontend branch. Existing Milesto
 
 Docker Desktop is unavailable on this Windows host. Real S3 tests use official SeaweedFS 4.51 bound to loopback port 18333 with private bucket access. Elastic's official Windows package endpoints return 403 from this host, so actual Elasticsearch integration and search-browser checks run in GitHub Actions with the official Elasticsearch 8.19.4 image. No fake search service substitutes for these acceptance checks.
 
-## Backend attachment evidence
+## Backend verification
 
-The attachment slice passed 48 backend tests, including 20 PostgreSQL/HTTP/S3 integration tests and 28 unit tests. Two additional real-Kestrel URL-variant regressions were subsequently added. Independent review found and verified the route-size correction.
+**82 backend tests passed in GitHub CI:** 38 unit tests and 44 PostgreSQL/HTTP/S3/Elasticsearch integration tests, with no failures or skips. Both the checks and production Compose jobs passed.
 
-Coverage includes byte/name/size validation; owner/foreign/staff access; staff-only reply files; forced download headers and original bytes; missing CSRF; actual uploads larger than 64 KiB; oversized-body early rejection; optimistic concurrency and the tenth-file race; database rollback and S3 cleanup; private object access and sanitized outage errors. Migration and API contract checks use generated artifacts.
+- [Backend PR #3](https://github.com/EhsanEbneKhodadad/ticketflow/pull/3)
+- [Passing PR CI](https://github.com/EhsanEbneKhodadad/ticketflow/actions/runs/40676455027)
+- [Passing branch CI](https://github.com/EhsanEbneKhodadad/ticketflow/actions/runs/40676380971)
 
-## Complete milestone checks
+Attachment coverage includes byte/name/size validation, ownership, internal-reply privacy, original download bytes and safety headers, CSRF, real Kestrel body limits and accepted URL variants, concurrent file-cap conflicts, PostgreSQL rollback, S3 cleanup, private object access and sanitized outage errors. A native smoke test of the published API also exercised PostgreSQL and actual SeaweedFS together and confirmed that a customer cannot list or download internal files.
 
-The combined backend passes 77 local tests with real PostgreSQL and S3, excluding only two real Elasticsearch tests that require the CI Docker runner. Release build, locked restore, C# formatting, generated frontend API types and TypeScript compatibility checks pass. The new search suite covers metadata/date filters, current-DB authorization/snippets/counts, bounded replay and index failures, and the advertised camel-case query enum contract. The same query compatibility defect on the existing ticket list was reproduced and corrected.
+Search coverage includes full-text public content and ticket numbers, metadata/date filters before the candidate window, current-DB authorization/count/snippet checks, safe highlights, replay/idempotence, stale ownership, index loss/rebuilding, and deletion between index setup and bulk writes. Exact-index templates preserve mappings during automatic recreation. The advertised camel-case query enums work on search and the existing ticket list; invalid/duplicate values return validation errors.
 
-Two compiled Elasticsearch integration scenarios remain for GitHub CI: full DB/index/API projection and recovery, and the bounded candidate window with metadata filtering. Frontend/browser counts, CI links and selected screenshots are recorded after their verification. Neither Milestone 2 nor Milestone 3 PRs are merged automatically.
+Release solution build, locked restore, C# formatting, generated API-contract consistency, frontend compatibility checks and Compose startup passed. Independent attachment and search reviews found two defects (route-size matching and index-loss mappings); both were fixed and their regressions passed.
+
+## Frontend and browser evidence
+
+The frontend uses generated API types, scoped queries and guarded multipart/binary transport. The original whole suite passed 27 tests; a subsequent delayed-options filter regression and its fix passed the focused search/attachment suite. TypeScript (app/shared and Cypress), ESLint, formatting and the final production build passed.
+
+Five native browser journeys passed against the production web server, published API, PostgreSQL, Mailpit and actual SeaweedFS. These cover the existing M2 auth/ticket/reset workflow plus attachment upload/download, exact 10 MiB proxy upload, public reply files, conflict preservation, private/foreign file denial and closed-ticket states. Both attachment journeys passed again after the final display/framing correction. The genuine full-text browser scenario remains for the frontend CI stack with Elasticsearch and worker enabled.
+
+![Ticket files](screenshots/m3-ticket-attachments.png)
+
+![Reply files](screenshots/m3-reply-attachments.png)
+
+Neither Milestone 2 nor Milestone 3 PRs are merged automatically.
