@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole, Send, MessageSquare } from "lucide-react";
@@ -11,9 +11,11 @@ import { ticketsApi, initials, timeLabel, type Ticket } from "./api";
 export function Conversation({
   ticket,
   staff,
+  renderAttachments,
 }: {
   ticket: Ticket;
   staff: boolean;
+  renderAttachments?: (message: Ticket["messages"][number]) => ReactNode;
 }) {
   const client = useQueryClient();
   const [internal, setInternal] = useState(false);
@@ -88,6 +90,7 @@ export function Conversation({
                 </time>
               </div>
               <p className="message-body">{message.body}</p>
+              {renderAttachments?.(message)}
             </article>
           ))}
         </div>

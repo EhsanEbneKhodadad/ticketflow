@@ -15,6 +15,7 @@ import {
 } from "./api";
 import { Conversation } from "./conversation";
 import { TicketManagement } from "./ticket-management";
+import { AttachmentPanel } from "@/features/attachments/attachment-panel";
 import { TicketForm } from "./ticket-form";
 
 export function TicketDetail({ id }: { id: string }) {
@@ -109,7 +110,34 @@ export function TicketDetail({ id }: { id: string }) {
               Submitted by {ticket.requesterName}
             </div>
           </section>
-          <Conversation ticket={ticket} staff={staff} />
+          {user && (
+            <section className="card">
+              <AttachmentPanel
+                ticketId={id}
+                version={ticket.version}
+                closed={ticket.status === "closed"}
+                principalId={user.id}
+                staff={staff}
+              />
+            </section>
+          )}
+          <Conversation
+            ticket={ticket}
+            staff={staff}
+            renderAttachments={(message) =>
+              user && (
+                <AttachmentPanel
+                  ticketId={id}
+                  version={ticket.version}
+                  closed={ticket.status === "closed"}
+                  principalId={user.id}
+                  staff={staff}
+                  messageId={message.id}
+                  internal={message.internal}
+                />
+              )
+            }
+          />
         </div>
         <aside className="ticket-sidebar" aria-label="Ticket information">
           <div>

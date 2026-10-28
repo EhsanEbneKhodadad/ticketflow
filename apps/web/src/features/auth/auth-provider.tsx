@@ -1,5 +1,11 @@
 "use client";
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import type { components } from "@ticketflow/api-client";
@@ -12,6 +18,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   error: Error | null;
+  sessionNotice: string;
   signIn: (input: Login) => Promise<void>;
   register: (input: Registration) => Promise<void>;
   signOut: () => Promise<void>;
@@ -23,6 +30,7 @@ const Context = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient();
   const router = useRouter();
+  const [sessionNotice, setSessionNotice] = useState("");
   const session = useQuery({
     queryKey: ["session"],
     staleTime: 60000,
@@ -54,7 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
   useEffect(() => {
-    const expired = () => {
+    const expired = (event: Event) => {
+      setSessionNotice(
+        (event as CustomEvent<{ code?: string }>).detail?.code ===
+          "account_changed"
+          ? "Your account changed in another tab. Sign in to this workspace again."
+          : "",
+      );
       client.clear();
       client.setQueryData(["session"], null);
       router.replace("/login");
@@ -70,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify(input),
     });
     client.clear();
+    setSessionNotice("");
     client.setQueryData(["session"], user);
     router.push("/tickets");
   }
@@ -80,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: session.data ?? null,
         loading: session.isPending,
         error: session.error,
+        sessionNotice,
         signIn: (input) => authenticate("/auth/login", input),
         register: (input) => authenticate("/auth/register", input),
         signOut: async () => {

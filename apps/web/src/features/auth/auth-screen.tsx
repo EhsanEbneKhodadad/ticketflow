@@ -147,6 +147,11 @@ export function AuthScreen({
           </span>
           <h1 id="auth-title">{titles[mode]}</h1>
           <p className="auth-description">{descriptions[mode]}</p>
+          {mode === "login" && auth.sessionNotice && (
+            <div role="alert" className="error-box">
+              {auth.sessionNotice}
+            </div>
+          )}
           {message ? (
             <div className="success-box" role="status">
               <Check size={18} />
