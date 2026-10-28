@@ -85,16 +85,29 @@ services:
     ports: ["127.0.0.1:5080:8080"]
     depends_on:
       migrate: { condition: service_completed_successfully }
-  worker:
+  jobs-init:
     profiles: [app]
     build:
       context: .
       dockerfile: infrastructure/docker/backend.Dockerfile
       args: { PROJECT: TicketFlow.Worker }
     environment: *backend-env
-    command: ["TicketFlow.Worker.dll"]
+    command: ["TicketFlow.Worker.dll", "--prepare-jobs"]
     depends_on:
       migrate: { condition: service_completed_successfully }
+    restart: "no"
+  worker:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend.Dockerfile
+      args: { PROJECT: TicketFlow.Worker }
+    environment:
+      <<: *backend-env
+      Jobs__Enabled: "true"
+    command: ["TicketFlow.Worker.dll"]
+    depends_on:
+      jobs-init: { condition: service_completed_successfully }
   web:
     profiles: [app]
     build:

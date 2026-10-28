@@ -9,10 +9,45 @@ namespace TicketFlow.Infrastructure.Persistence;
 
 public sealed class TicketFlowDbContext(DbContextOptions<TicketFlowDbContext> options) : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>(options)
 {
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Ticket> Tickets => Set<Ticket>();
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
     public DbSet<SessionFamily> SessionFamilies => Set<SessionFamily>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        AddOutboxMessages();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        AddOutboxMessages();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void AddOutboxMessages()
+    {
+        ChangeTracker.DetectChanges();
+        var pending = ChangeTracker.Entries<OutboxMessage>().Select(e => e.Entity.Id).ToHashSet();
+        foreach (var entry in ChangeTracker.Entries<TicketAudit>().Where(e => e.State == EntityState.Added).ToArray())
+        {
+            var audit = entry.Entity;
+            var ticket = ChangeTracker.Entries<Ticket>().Single(t => t.Entity.Id == audit.TicketId).Entity;
+            if (pending.Add(audit.Id)) OutboxMessages.Add(new OutboxMessage
+            {
+                Id = audit.Id,
+                TicketId = audit.TicketId,
+                ActorId = audit.ActorId,
+                RequesterId = ticket.RequesterId,
+                AgentId = ticket.AgentId,
+                Kind = audit.Kind,
+                Internal = audit.Internal,
+                CreatedAt = audit.CreatedAt
+            });
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +61,16 @@ public sealed class TicketFlowDbContext(DbContextOptions<TicketFlowDbContext> op
             ConcurrencyStamp = name + "-role-v1"
         });
         modelBuilder.Entity<IdentityRole<Guid>>().HasData(roles);
+
+        var outbox = modelBuilder.Entity<OutboxMessage>();
+        outbox.ToTable("outbox_messages");
+        outbox.HasKey(m => m.Id);
+        outbox.Property(m => m.Id).ValueGeneratedNever();
+        outbox.Property(m => m.Kind).HasMaxLength(40).IsRequired();
+        outbox.Property(m => m.DedupKey).HasMaxLength(100);
+        outbox.HasIndex(m => m.DedupKey).IsUnique();
+        outbox.HasIndex(m => new { m.TicketId, m.TicketVersion, m.Kind });
+        outbox.HasIndex(m => new { m.CompletedAt, m.FailedAt, m.NextAttemptAt });
 
         var category = modelBuilder.Entity<Category>();
         category.ToTable("categories");
