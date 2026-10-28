@@ -4,7 +4,7 @@ public sealed class WorkerLifecycle(ILogger<WorkerLifecycle> logger) : IHostedSe
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        logger.LogInformation("TicketFlow worker foundation started. Background jobs are not configured yet.");
+        logger.LogInformation("TicketFlow worker started.");
         return Task.CompletedTask;
     }
 

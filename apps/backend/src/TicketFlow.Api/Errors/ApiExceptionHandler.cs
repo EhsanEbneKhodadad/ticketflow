@@ -26,7 +26,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             Status = status,
             Title = status == 500 ? "An unexpected error occurred." : "The request could not be completed.",
             Detail = error is RuleException ? error.Message : status == 400 ? "Check the request fields." : "Please try again later."
-        }, cancellationToken: ct);
+        }, options: (System.Text.Json.JsonSerializerOptions?)null, contentType: "application/problem+json", cancellationToken: ct);
         return true;
     }
 }

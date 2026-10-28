@@ -19,7 +19,7 @@ Copy-Item .env.example .env
 docker compose --profile app up -d --build --wait
 ```
 
-A one-shot migration service initializes PostgreSQL and explicitly seeds Development categories and demo accounts. Add --profile search for optional Elasticsearch.
+A one-shot migration service initializes PostgreSQL and explicitly seeds Development categories and demo accounts. For optional public ticket search, set `SEARCH_ENABLED=true` in `.env` and add `--profile search`; both the API and worker must run. Search remains disabled by default. See the [search setup and limits](docs/runbooks/local-development.md#public-ticket-search).
 
 - Web: http://localhost:3000
 - API: http://localhost:5080/api/v1/system/info
