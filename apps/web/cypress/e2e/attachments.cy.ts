@@ -19,6 +19,69 @@ const select = (
     mimeType: "text/plain",
   });
 describe("Milestone 3 private attachments", () => {
+  it("rejects an initial upload after another tab signs in as the ticket owner", () => {
+    let owner = "",
+      id = "",
+      staffId = "",
+      version = 0;
+    registerCustomer("account-switch").then((email) => {
+      owner = email;
+    });
+    createTicket("Account-bound attachment regression").then((ticket) => {
+      id = ticket.id;
+      version = Number(ticket.version);
+    });
+    cy.then(() => signIn("agent@ticketflow.local")).then(({ body }) => {
+      staffId = body.id;
+    });
+    cy.then(() => cy.visit("/tickets/" + id));
+    cy.contains("h1", "Account-bound attachment regression").should(
+      "be.visible",
+    );
+    cy.contains(".sidebar-account", "Support agent").should("be.visible");
+    select(
+      'section[aria-label="Ticket attachments"] input[type=file]',
+      "stale-private-draft.txt",
+      "Do not upload under another account",
+    );
+    cy.get('section[aria-label="Ticket attachments"]')
+      .contains("No files attached here yet.")
+      .should("be.visible");
+    cy.get("#reply-body").type("Staff-only unsent draft");
+    // Change only shared cookies. React Query still holds staff A and this selected file.
+    cy.then(() => signIn(owner));
+    cy.contains(".sidebar-account", "Support agent").should("be.visible");
+    cy.intercept("POST", "/api/v1/tickets/*/attachments").as(
+      "changedAccountUpload",
+    );
+    cy.get('section[aria-label="Ticket attachments"]')
+      .contains("button", "Upload file")
+      .click();
+    cy.wait("@changedAccountUpload").then(({ request, response }) => {
+      expect(request.headers["x-ticketflow-user"]).eq(staffId);
+      expect(response!.statusCode).eq(412);
+      expect(response!.body.code).eq("account_changed");
+    });
+    cy.location("pathname").should("eq", "/login");
+    cy.contains("[role=alert]", "Your account changed in another tab").should(
+      "be.visible",
+    );
+    cy.contains("Selected: stale-private-draft.txt").should("not.exist");
+    cy.get("#reply-body").should("not.exist");
+    // B owns the ticket and remains signed in server-side: a foreign-ticket denial cannot pass this case.
+    cy.then(() => getTicket(id)).then((ticket) => {
+      expect(Number(ticket.version)).eq(version);
+    });
+    cy.then(() =>
+      cy.request<Schemas["AttachmentView"][]>({
+        url: `/api/v1/tickets/${id}/attachments`,
+        log: false,
+      }),
+    )
+      .its("body")
+      .should("deep.eq", []);
+    cy.get("@changedAccountUpload.all").should("have.length", 1);
+  });
   it("uploads and downloads original files, handles conflicts and protects internal reply metadata", () => {
     let owner = "",
       id = "",

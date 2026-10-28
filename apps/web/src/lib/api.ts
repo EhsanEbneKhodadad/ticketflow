@@ -46,6 +46,8 @@ async function perform(path: string, options: Options = {}) {
   assertCurrent(options);
   const method = (options.method ?? "GET").toUpperCase();
   const headers = { ...options.headers } as Record<string, string>;
+  if (options.expectedPrincipalId)
+    headers["X-TicketFlow-User"] = options.expectedPrincipalId;
   if (options.body && !(options.body instanceof FormData))
     headers["Content-Type"] = "application/json";
   if (!["GET", "HEAD", "OPTIONS"].includes(method))
@@ -129,13 +131,19 @@ async function apiResponse(
   }
   assertCurrent(options);
   if (!response.ok) {
+    const problem = await response.json().catch(() => ({}));
     if (
-      response.status === 401 &&
-      !path.startsWith("/auth/") &&
+      (response.status === 412 ||
+        (response.status === 401 && !path.startsWith("/auth/"))) &&
       typeof window !== "undefined"
     )
-      window.dispatchEvent(new Event("ticketflow:session-expired"));
-    const problem = await response.json().catch(() => ({}));
+      window.dispatchEvent(
+        new CustomEvent("ticketflow:session-expired", {
+          detail: {
+            code: response.status === 412 ? "account_changed" : undefined,
+          },
+        }),
+      );
     throw new ApiError(
       response.status,
       problem.detail ??

@@ -165,3 +165,64 @@ it.each(["me", "refresh"])(
     ).toHaveLength(1);
   },
 );
+
+it.each(["/search/tickets?q=account", "/categories"])(
+  "binds the initial scoped GET %s to its initiating account",
+  async (path) => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, json: async () => [] });
+    await api(path, { expectedPrincipalId: "staff-A" });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1" + path,
+      expect.objectContaining({
+        headers: { "X-TicketFlow-User": "staff-A" },
+      }),
+    );
+  },
+);
+
+it("rejects an initial wrong-account upload without renewal or replay and expires the local view", async () => {
+  const expired = jest.fn();
+  window.addEventListener("ticketflow:session-expired", expired);
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ token: "B-csrf" }),
+    })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 412,
+      json: async () => ({
+        code: "account_changed",
+        detail:
+          "Your account changed in another tab. Sign in to this workspace again.",
+      }),
+    });
+  try {
+    await expect(
+      api("/tickets/id/attachments", {
+        method: "POST",
+        body: new FormData(),
+        expectedPrincipalId: "staff-A",
+        isCurrent: () => true,
+      }),
+    ).rejects.toMatchObject({
+      status: 412,
+      message: expect.stringContaining("account changed"),
+    });
+    expect(jest.mocked(fetch).mock.calls.map(([path]) => path)).toEqual([
+      "/api/v1/auth/csrf",
+      "/api/v1/tickets/id/attachments",
+    ]);
+    expect(jest.mocked(fetch).mock.calls[1][1]?.headers).toEqual({
+      "X-CSRF-TOKEN": "B-csrf",
+      "X-TicketFlow-User": "staff-A",
+    });
+    expect(expired).toHaveBeenCalledTimes(1);
+  } finally {
+    window.removeEventListener("ticketflow:session-expired", expired);
+  }
+});
