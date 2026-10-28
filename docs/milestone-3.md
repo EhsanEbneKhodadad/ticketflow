@@ -27,4 +27,4 @@ Transactional outbox, Hangfire notifications/reminders, file-content extraction,
 - [Implementation plan](superpowers/plans/2026-10-28-milestone-3.md)
 - [Private attachment architecture](decisions/0005-private-attachments.md)
 
-Verification and screenshots are recorded after the complete apps pass their checks.
+See [verification and screenshots](milestone-3-verification.md): 89 backend tests, 32 frontend tests and 7 production-stack browser journeys pass. The separate [backend PR #3](https://github.com/EhsanEbneKhodadad/ticketflow/pull/3) and [frontend PR #4](https://github.com/EhsanEbneKhodadad/ticketflow/pull/4) remain unmerged.

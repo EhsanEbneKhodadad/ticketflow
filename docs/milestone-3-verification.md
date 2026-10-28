@@ -20,16 +20,28 @@ Search coverage includes full-text public content and ticket numbers, metadata/d
 
 The optional X-TicketFlow-User precondition is checked against authenticated identity before endpoint execution. Account mismatch returns 412/account_changed; client requests are not replayed under the new account. Legacy clients without the header retain their existing behavior.
 
-Release solution build, locked restore, C# formatting, generated API-contract consistency, frontend compatibility checks and Compose startup passed. Independent attachment and search reviews found two defects (route-size matching and index-loss mappings); both were fixed and their regressions passed.
+Release solution build, locked restore, C# formatting, generated API-contract consistency, frontend compatibility checks and Compose startup passed. Independent scoped and whole-milestone reviews completed. Route-size matching, index-loss mappings, async filter defaults, renewed-account replay, and initial-request account binding were corrected with regression coverage; final review found no remaining P1/P2 issue.
 
 ## Frontend and browser evidence
 
 The frontend passes **32 Jest tests** after the final production build. Generated API types, scoped queries, guarded multipart/binary transport, actual renewed-identity checks, initial-request account binding, async filter defaults and safe text highlights are covered. TypeScript (app/shared and Cypress), ESLint, formatting and the clean production build passed; Jest ignores generated standalone output.
 
-**Six native browser journeys passed** against the production web server, published API, PostgreSQL, Mailpit and actual SeaweedFS. These cover the existing M2 auth/ticket/reset workflow plus attachment upload/download, exact 10 MiB proxy upload, public reply files, conflict preservation, private/foreign file denial and closed-ticket states. The final run includes the initial account-switch upload regression: a new cookie account cannot accept an old tab’s upload, no ticket/file mutation occurs, and stale local file state clears without revoking the shared session. The genuine full-text browser scenario remains for the frontend CI stack with Elasticsearch and worker enabled.
+**Six native browser journeys passed** against the production web server, published API, PostgreSQL, Mailpit and actual SeaweedFS. These cover the existing M2 auth/ticket/reset workflow plus attachment upload/download, exact 10 MiB proxy upload, public reply files, conflict preservation, private/foreign file denial and closed-ticket states. The final run includes the initial account-switch upload regression: a new cookie account cannot accept an old tab’s upload, no ticket/file mutation occurs, and stale local file state clears without revoking the shared session. **All 7 browser journeys passed in GitHub CI** against the production Compose web/API/worker/PostgreSQL/SeaweedFS/Elasticsearch/Mailpit stack. The search journey verifies public replies, metadata/date/sort filters, filter-only queries, literal markup as safe text, staff/customer internal-note exclusion, foreign-owner isolation and a 390px viewport.
+
+- [Frontend PR #4](https://github.com/EhsanEbneKhodadad/ticketflow/pull/4) (current checks and dependency status)
+- [Passing feature-acceptance CI](https://github.com/EhsanEbneKhodadad/ticketflow/actions/runs/40731981820)
+- [Passing branch CI](https://github.com/EhsanEbneKhodadad/ticketflow/actions/runs/40731843592)
 
 ![Ticket files](screenshots/m3-ticket-attachments.png)
 
 ![Reply files](screenshots/m3-reply-attachments.png)
 
-Neither Milestone 2 nor Milestone 3 PRs are merged automatically.
+![Full-text results and filters](screenshots/m3-search-results.png)
+
+The literal markup in the result is a test input rendered as text; it is not executed.
+
+![Mobile search filters](screenshots/m3-search-mobile.png)
+
+Screenshots come from the successful real-service CI run, not mocked responses. Named evidence files exclude failed/runner captures. Neither Milestone 2 nor Milestone 3 PRs are merged. Review order is M2 backend #1, M2 frontend #2, M3 backend #3, M3 frontend #4; retarget dependent PRs to main after their prerequisites merge.
+
+Local native preview has no Elasticsearch runtime; full search is verified in Docker CI and can be enabled with SEARCH_ENABLED=true and the Compose search profile per README. No public application deployment is included.
