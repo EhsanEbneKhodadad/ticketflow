@@ -10,6 +10,7 @@ import {
   LifeBuoy,
   LogOut,
   Menu,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api";
@@ -91,6 +92,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           >
             <Plus size={16} />
             New ticket
+          </Link>
+          <Link
+            href="/search"
+            className={pathname === "/search" ? "active" : ""}
+            onClick={() => setOpen(false)}
+          >
+            <Search size={16} />
+            Search tickets
           </Link>
           {staff && (
             <>

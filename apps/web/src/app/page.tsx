@@ -43,7 +43,7 @@ export default function Home() {
         <section className="hero" aria-labelledby="hero-title">
           <div>
             <p className="eyebrow">
-              <span className="dot" /> Milestone 2 · Support workflow
+              <span className="dot" /> Milestone 3 · Files & public search
             </p>
             <h1 id="hero-title">A clear path from question to resolution.</h1>
             <p className="hero-copy">
@@ -66,8 +66,8 @@ export default function Home() {
               Good support starts with a clear conversation.
             </h2>
             <p>
-              Create a request, follow the conversation, and keep every update
-              in view.
+              Create a request, share files, and find answers across public
+              conversations.
             </p>
             <ul className="foundation-list">
               <li>
@@ -134,7 +134,7 @@ export default function Home() {
             </p>
             <p>
               <strong>Separate worker</strong>
-              <span>Prepared for durable background jobs</span>
+              <span>Reconciles the public search index</span>
             </p>
           </div>
         </section>
