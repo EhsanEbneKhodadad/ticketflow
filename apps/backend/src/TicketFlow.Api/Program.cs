@@ -51,6 +51,7 @@ _ = app.Services.GetRequiredService<AuthSettings>();
 app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseExpectedUserPrecondition();
 app.UseRateLimiter();
 app.UseAttachmentBodyLimit();
 app.Use(async (context, next) =>

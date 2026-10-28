@@ -42,7 +42,7 @@ public sealed class AttachmentWorkflowTests
         return "/api/v1/tickets/" + ticket.GetProperty("id").GetGuid();
     }
 
-    private static async Task<HttpResponseMessage> Upload(HttpClient client, string path, int version, string name = "details.txt", byte[]? bytes = null, Guid? messageId = null, bool csrf = true, string attachmentRoute = "attachments")
+    private static async Task<HttpResponseMessage> Upload(HttpClient client, string path, int version, string name = "details.txt", byte[]? bytes = null, Guid? messageId = null, bool csrf = true, string attachmentRoute = "attachments", string? expectedUser = null)
     {
         using var body = new MultipartFormDataContent();
         body.Add(new ByteArrayContent(bytes ?? Encoding.UTF8.GetBytes("Useful diagnostic details")), "file", name);
@@ -51,12 +51,78 @@ public sealed class AttachmentWorkflowTests
         using var request = new HttpRequestMessage(HttpMethod.Post, path + "/" + attachmentRoute) { Content = body };
         // An early size rejection can precede body transmission; avoid racing the server's response with an 11 MiB socket write.
         request.Headers.ExpectContinue = true;
+        if (expectedUser is not null) request.Headers.Add("X-TicketFlow-User", expectedUser);
         if (csrf)
         {
             var token = await Json(await client.GetAsync("/api/v1/auth/csrf"));
             request.Headers.Add("X-CSRF-TOKEN", token.GetProperty("token").GetString());
         }
         return await client.SendAsync(request);
+    }
+
+    [Fact]
+    public async Task Initial_upload_rejects_changed_account_before_storage_or_ticket_mutation()
+    {
+        await using var database = await PostgresDatabase.CreateAsync();
+        await using var app = new WorkflowFactory(database.ConnectionString);
+        app.UseKestrel();
+        await app.InitializeAsync();
+        using var owner = app.CreateClient();
+        using var staff = app.CreateClient();
+        await Login(owner, "customer");
+        await Login(staff, "agent");
+        var ownerId = (await Json(await owner.GetAsync("/api/v1/auth/me"))).GetProperty("id").GetGuid();
+        var staffId = (await Json(await staff.GetAsync("/api/v1/auth/me"))).GetProperty("id").GetGuid();
+        var path = await Create(owner);
+        var before = await Json(await owner.GetAsync(path));
+
+        // B owns this ticket and has valid CSRF: without the precondition this upload succeeds as B.
+        var problem = await Json(await Upload(owner, path, 1, expectedUser: staffId.ToString()), HttpStatusCode.PreconditionFailed);
+        using var withoutCsrf = await Upload(owner, path, 1, expectedUser: staffId.ToString(), csrf: false);
+        Assert.Equal(HttpStatusCode.PreconditionFailed, withoutCsrf.StatusCode);
+        Assert.Equal("application/problem+json", withoutCsrf.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("account_changed", problem.GetProperty("code").GetString());
+        Assert.DoesNotContain(ownerId.ToString(), problem.GetRawText());
+        Assert.DoesNotContain(staffId.ToString(), problem.GetRawText());
+        Assert.Empty(app.Storage.Objects);
+        Assert.Equal(0, app.Storage.Deletes);
+        Assert.Equal(before.GetRawText(), (await Json(await owner.GetAsync(path))).GetRawText());
+        Assert.Empty((await Json(await owner.GetAsync(path + "/attachments"))).EnumerateArray());
+
+        foreach (var route in new[] { path, path + "/attachments", "/api/v1/search/tickets?q=details", "/api/v1/categories" })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, route);
+            request.Headers.Add("X-TicketFlow-User", staffId.ToString());
+            await Json(await owner.SendAsync(request), HttpStatusCode.PreconditionFailed);
+        }
+        await Json(await Upload(owner, path, 1, expectedUser: ownerId.ToString()), HttpStatusCode.Created);
+        Assert.Single(app.Storage.Objects);
+        Assert.Equal(2, (await Json(await owner.GetAsync(path))).GetProperty("version").GetInt32());
+    }
+
+    [Theory]
+    [InlineData("absent", HttpStatusCode.OK)]
+    [InlineData("correct", HttpStatusCode.OK)]
+    [InlineData("malformed", HttpStatusCode.BadRequest)]
+    [InlineData("duplicate", HttpStatusCode.BadRequest)]
+    [InlineData("combined", HttpStatusCode.BadRequest)]
+    [InlineData("anonymous", HttpStatusCode.Unauthorized)]
+    public async Task Account_precondition_preserves_authentication_and_validates_one_guid(string value, HttpStatusCode expected)
+    {
+        await using var database = await PostgresDatabase.CreateAsync();
+        await using var app = new WorkflowFactory(database.ConnectionString);
+        app.UseKestrel();
+        await app.InitializeAsync();
+        using var client = app.CreateClient();
+        if (value != "anonymous") await Login(client, "customer");
+        var id = value == "anonymous" ? Guid.NewGuid() : (await Json(await client.GetAsync("/api/v1/auth/me"))).GetProperty("id").GetGuid();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/tickets");
+        if (value == "duplicate") request.Headers.Add("X-TicketFlow-User", new[] { id.ToString(), id.ToString() });
+        else if (value != "absent") request.Headers.Add("X-TicketFlow-User", value == "malformed" ? "invalid" : value == "combined" ? id + "," + id : id.ToString());
+        using var response = await client.SendAsync(request);
+        Assert.Equal(expected, response.StatusCode);
+        if (expected == HttpStatusCode.BadRequest)
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
     [Fact]
