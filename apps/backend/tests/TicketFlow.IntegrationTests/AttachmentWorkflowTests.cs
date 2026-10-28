@@ -42,13 +42,13 @@ public sealed class AttachmentWorkflowTests
         return "/api/v1/tickets/" + ticket.GetProperty("id").GetGuid();
     }
 
-    private static async Task<HttpResponseMessage> Upload(HttpClient client, string path, int version, string name = "details.txt", byte[]? bytes = null, Guid? messageId = null, bool csrf = true)
+    private static async Task<HttpResponseMessage> Upload(HttpClient client, string path, int version, string name = "details.txt", byte[]? bytes = null, Guid? messageId = null, bool csrf = true, string attachmentRoute = "attachments")
     {
         using var body = new MultipartFormDataContent();
         body.Add(new ByteArrayContent(bytes ?? Encoding.UTF8.GetBytes("Useful diagnostic details")), "file", name);
         body.Add(new StringContent(version.ToString(System.Globalization.CultureInfo.InvariantCulture)), "expectedVersion");
         if (messageId.HasValue) body.Add(new StringContent(messageId.Value.ToString()), "messageId");
-        using var request = new HttpRequestMessage(HttpMethod.Post, path + "/attachments") { Content = body };
+        using var request = new HttpRequestMessage(HttpMethod.Post, path + "/" + attachmentRoute) { Content = body };
         // An early size rejection can precede body transmission; avoid racing the server's response with an 11 MiB socket write.
         request.Headers.ExpectContinue = true;
         if (csrf)
@@ -189,5 +189,29 @@ public sealed class AttachmentWorkflowTests
         Assert.DoesNotContain("ObjectKey", problem.GetRawText(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(1, (await Json(await owner.GetAsync(path))).GetProperty("version").GetInt32());
         Assert.Empty(app.Storage.Objects);
+    }
+
+    [Theory]
+    [InlineData("attachments/")]
+    [InlineData("ATTACHMENTS")]
+    public async Task Upload_route_variants_apply_multipart_limits_before_parsing(string attachmentRoute)
+    {
+        await using var database = await PostgresDatabase.CreateAsync();
+        await using var app = new WorkflowFactory(database.ConnectionString);
+        app.UseKestrel();
+        await app.InitializeAsync();
+        using var owner = app.CreateClient();
+        await Login(owner, "customer");
+        var path = await Create(owner);
+        var bytes = Encoding.UTF8.GetBytes(new string('x', 70 * 1024));
+        for (var count = 1; count <= 2; count++)
+        {
+            var ticket = await Json(await owner.GetAsync(path));
+            var version = ticket.GetProperty("version").GetInt32();
+            var uploaded = await Json(await Upload(owner, path, version, bytes: bytes, attachmentRoute: attachmentRoute), HttpStatusCode.Created);
+            Assert.Equal(version + 1, uploaded.GetProperty("ticketVersion").GetInt32());
+            Assert.Equal(bytes.Length, uploaded.GetProperty("size").GetInt64());
+            Assert.Equal(count, (await Json(await owner.GetAsync(path + "/attachments"))).GetArrayLength());
+        }
     }
 }

@@ -22,8 +22,8 @@ public static class AttachmentEndpoints
         {
             // Runs before CSRF/form parsing; the rest of the API retains its 64 KiB limit.
             if (HttpMethods.IsPost(context.Request.Method)
-                && context.Request.Path.StartsWithSegments("/api/v1/tickets")
-                && context.Request.Path.Value!.EndsWith("/attachments", StringComparison.Ordinal))
+                && context.Request.Path.StartsWithSegments("/api/v1/tickets", StringComparison.OrdinalIgnoreCase)
+                && context.Request.Path.Value!.TrimEnd('/').EndsWith("/attachments", StringComparison.OrdinalIgnoreCase))
             {
                 var size = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
                 if (size is { IsReadOnly: false }) size.MaxRequestBodySize = MaxRequestBytes;
