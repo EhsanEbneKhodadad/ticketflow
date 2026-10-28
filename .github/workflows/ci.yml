@@ -63,6 +63,22 @@ jobs:
           curl --retry 10 --retry-connrefused --retry-delay 2 -fsS http://localhost:5080/health/ready
           curl -fsS http://localhost:3000/api/v1/system/info
           curl -fsS http://localhost:3000/api/health
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm e2e:typecheck
+      - run: pnpm --filter @ticketflow/web exec cypress install
+      - name: Exercise real authentication and ticket workflows
+        run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: workflow-screenshots
+          path: apps/web/cypress/screenshots
+          if-no-files-found: ignore
       - name: Logs
         if: failure()
         run: docker compose --profile app logs --no-color

@@ -35,7 +35,7 @@ export default function Home() {
         </Link>
         <nav aria-label="Main navigation">
           <a href="#workflow">Workflow</a>
-          <a href="#architecture">Architecture</a>
+          <Link href="/login">Sign in</Link>
         </nav>
         <span className="version">v0.1 / local development</span>
       </header>
@@ -43,15 +43,18 @@ export default function Home() {
         <section className="hero" aria-labelledby="hero-title">
           <div>
             <p className="eyebrow">
-              <span className="dot" /> Milestone 1 · Foundation
+              <span className="dot" /> Milestone 2 · Support workflow
             </p>
             <h1 id="hero-title">A clear path from question to resolution.</h1>
             <p className="hero-copy">
               Support should feel like a conversation. TicketFlow is a workspace
               for the people asking for help and the teams making things right.
             </p>
-            <a className="primary-link" href="#workflow">
-              Explore the workflow <span aria-hidden="true">↗</span>
+            <Link className="primary-link" href="/tickets">
+              Open your workspace <span aria-hidden="true">↗</span>
+            </Link>
+            <a className="public-workflow-link" href="#workflow">
+              Explore the workflow
             </a>
           </div>
           <aside className="foundation-card" aria-labelledby="foundation-title">
@@ -60,21 +63,21 @@ export default function Home() {
               <span aria-hidden="true">↗</span>
             </div>
             <h2 id="foundation-title">
-              Good systems start with a solid foundation.
+              Good support starts with a clear conversation.
             </h2>
             <p>
-              The application shell is in place. Identity, tickets, and
-              conversations are the next milestone.
+              Create a request, follow the conversation, and keep every update
+              in view.
             </p>
             <ul className="foundation-list">
               <li>
-                <span>01</span> One repository. Clear boundaries.
+                <span>01</span> A private workspace for every customer.
               </li>
               <li>
-                <span>02</span> Typed contracts between apps.
+                <span>02</span> A shared queue for your support team.
               </li>
               <li>
-                <span>03</span> Repeatable local development.
+                <span>03</span> A complete, traceable activity history.
               </li>
             </ul>
             <div className="card-footer">
@@ -89,9 +92,9 @@ export default function Home() {
           aria-labelledby="workflow-title"
         >
           <div className="section-intro">
-            <p className="eyebrow">THE PLANNED WORKFLOW</p>
+            <p className="eyebrow">THE WORKFLOW</p>
             <h2 id="workflow-title">Every request has a way forward.</h2>
-            <p>Coming in Milestone 2.</p>
+            <p>From the first question to the final reply.</p>
           </div>
           <div className="workflow-grid">
             {workflow.map((item) => (
@@ -139,7 +142,7 @@ export default function Home() {
       <footer>
         <span>TicketFlow</span>
         <span>Thoughtful support. From the ground up.</span>
-        <span>Foundation release · 2026</span>
+        <span>Support workspace · 2026</span>
       </footer>
     </>
   );

@@ -4,7 +4,7 @@ A support ticket platform built as a Next.js + ASP.NET Core monorepo.
 
 Source: https://github.com/EhsanEbneKhodadad/ticketflow
 
-**Milestone 1: foundation.** Architecture boundaries, health endpoints, database bootstrap, generated API types, local infrastructure, and CI are included. Authentication and tickets begin in Milestone 2.
+**Milestone 2: authentication and ticket workflow.** Customers can register, create and edit requests, exchange replies, close and reopen tickets. Support staff manage assignments, priorities, status transitions, internal notes, and audit history. The monorepo includes generated API types, explicit database migrations, scoped AI rules, and CI.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ Copy-Item .env.example .env
 docker compose --profile app up -d --build --wait
 ```
 
-A one-shot migration service initializes PostgreSQL and explicitly seeds Development categories. Add --profile search for optional Elasticsearch.
+A one-shot migration service initializes PostgreSQL and explicitly seeds Development categories and demo accounts. Add --profile search for optional Elasticsearch.
 
 - Web: http://localhost:3000
 - API: http://localhost:5080/api/v1/system/info
@@ -63,6 +63,9 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm format:check
+pnpm e2e:typecheck
+# With the seeded API, web, and Mailpit running:
+pnpm e2e
 dotnet build apps/backend/TicketFlow.sln --no-restore
 dotnet test apps/backend/TicketFlow.sln --no-restore
 dotnet format apps/backend/TicketFlow.sln --verify-no-changes --no-restore
@@ -96,12 +99,16 @@ Read [architecture](docs/architecture/overview.md), [milestone plan](docs/milest
 
 docker compose down preserves volumes. Removing volumes deletes local data. Local credentials and loopback bindings are unsuitable for public hosting.
 
-Next: identity and tickets; attachments and search; jobs and notifications; dashboards and portfolio presentation; budgeted AWS deployment.
+Next: attachments and search; jobs and notifications; dashboards and portfolio presentation; budgeted AWS deployment.
 
 ## Verification status
 
-See [verification notes](docs/verification.md) for passed checks and pending sandbox-dependent acceptance checks.
+See [Milestone 2 verification and screenshots](docs/milestone-2-verification.md) for the current evidence. [Foundation verification](docs/verification.md) records the earlier milestone.
 
-## Milestone 2 API
+## Try the workspace
 
-Authentication, role-scoped tickets, conversations, internal notes, optimistic concurrency, and audit history are implemented. See [API setup and verification](docs/runbooks/milestone-2-api.md). The frontend workflow is delivered in a separate dependent PR.
+Open `/login` after starting Compose. Development-only demo accounts are `customer@ticketflow.local`, `agent@ticketflow.local`, and `admin@ticketflow.local`. Their initial password is the `DEMO_PASSWORD` value from `.env` (the sample is `TicketFlowDemo!2026`). Existing accounts retain their passwords on repeated seeding. Public registration always creates a Customer.
+
+The UI uses same-origin HttpOnly cookies and antiforgery headers, with no browser-stored tokens. Session refresh coordinates across tabs; private caches and pending mutation responses are scoped to the active account. Ticket edits preserve their original concurrency version so newer work cannot be silently overwritten.
+
+See [API setup](docs/runbooks/milestone-2-api.md), [Milestone 2 scope](docs/milestone-2.md), and [screenshots and verification](docs/milestone-2-verification.md).
