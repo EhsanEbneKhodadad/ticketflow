@@ -55,9 +55,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build and start stack
+        env:
+          SEARCH_ENABLED: "true"
         run: |
           cp .env.example .env
-          docker compose --profile app up -d --build --wait --wait-timeout 180
+          docker compose --profile app --profile search up -d --build --wait --wait-timeout 240
       - name: Check API and proxy
         run: |
           curl --retry 10 --retry-connrefused --retry-delay 2 -fsS http://localhost:5080/health/ready
@@ -81,7 +83,7 @@ jobs:
           if-no-files-found: ignore
       - name: Logs
         if: failure()
-        run: docker compose --profile app logs --no-color
+        run: docker compose --profile app --profile search logs --no-color
       - name: Stop stack
         if: always()
-        run: docker compose --profile app down
+        run: docker compose --profile app --profile search down

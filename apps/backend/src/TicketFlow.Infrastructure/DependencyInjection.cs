@@ -7,8 +7,12 @@ using Microsoft.Extensions.Hosting;
 using TicketFlow.Application.Abstractions;
 using TicketFlow.Application.Auth;
 using TicketFlow.Application.Tickets;
+using TicketFlow.Application.Attachments;
+using TicketFlow.Infrastructure.Attachments;
 using TicketFlow.Infrastructure.Identity;
 using TicketFlow.Infrastructure.Persistence;
+using TicketFlow.Application.Search;
+using TicketFlow.Infrastructure.Search;
 
 namespace TicketFlow.Infrastructure;
 
@@ -40,6 +44,13 @@ public static class DependencyInjection
         services.AddScoped<IPasswordResetSender, SmtpPasswordResetSender>();
         services.AddScoped<ITicketStore, TicketStore>();
         services.AddScoped<TicketWorkflow>();
+        services.AddSingleton(provider => SearchSettings.Load(provider.GetRequiredService<IConfiguration>()));
+        services.AddHttpClient<ITicketSearchIndex, ElasticsearchTicketIndex>(client => client.Timeout = TimeSpan.FromSeconds(10));
+        services.AddScoped<ISearchTicketStore, SearchTicketStore>();
+        services.AddScoped<TicketSearchWorkflow>();
+        services.AddScoped<SearchProjectionWorkflow>();
+        services.AddScoped<IAttachmentStorage, S3AttachmentStorage>();
+        services.AddScoped<AttachmentWorkflow>();
         services.AddScoped<IDevelopmentSeeder, DevelopmentSeeder>();
         return services;
     }

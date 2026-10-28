@@ -49,6 +49,19 @@
         "resolved": "3.1.4",
         "contentHash": "5mj99LvCqrq3CNi06xYdyIAXOEh+5b33F2nErCzI5zWiDdLHXiPXEWFSUAF8zlIv0ZWqjZNCwHTQeAPYbF3pCg=="
       },
+      "AWSSDK.Core": {
+        "type": "Transitive",
+        "resolved": "4.0.102.14",
+        "contentHash": "pRYOOIyj40UdQ6G9iq8AOU30sFPqWS/umM/sFTmAl4n1S6AVbVa67DJpJTxD+9qJFqweHPcyVW7Qb4BbUBLJdg=="
+      },
+      "AWSSDK.S3": {
+        "type": "Transitive",
+        "resolved": "4.0.104.7",
+        "contentHash": "mmURYvVR/+CM3+9FycHsz+ZZ2I3B1PPch7msARX8fKtiAfkDHYXCzdwQOKA5SvGGvleOKhLGa8YcWlAlbAtu0g==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.14, 5.0.0)"
+        }
+      },
       "BouncyCastle.Cryptography": {
         "type": "Transitive",
         "resolved": "2.7.0",
@@ -716,10 +729,10 @@
       "ticketflow.infrastructure": {
         "type": "Project",
         "dependencies": {
+          "AWSSDK.S3": "[4.0.104.7, )",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.14, )",
-          "Microsoft.Extensions.Hosting.Abstractions": "[10.0.14, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "System.IdentityModel.Tokens.Jwt": "[8.23.0, )",
           "TicketFlow.Application": "[1.0.0, )"

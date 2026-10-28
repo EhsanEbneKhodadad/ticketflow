@@ -7,7 +7,7 @@ namespace TicketFlow.Infrastructure.Persistence;
 public sealed class TicketStore(TicketFlowDbContext db) : ITicketStore
 {
     public Task<Ticket?> FindAsync(Guid id, CancellationToken ct) =>
-        db.Tickets.Include(t => t.Messages).Include(t => t.Audit).AsSplitQuery().SingleOrDefaultAsync(t => t.Id == id, ct);
+        db.Tickets.Include(t => t.Messages).Include(t => t.Audit).Include(t => t.Attachments).AsSplitQuery().SingleOrDefaultAsync(t => t.Id == id, ct);
 
     public async Task<TicketPage> ListAsync(Actor actor, TicketQuery query, CancellationToken ct)
     {

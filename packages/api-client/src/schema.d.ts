@@ -21,6 +21,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search public ticket content within the first 1000 candidates.
+         * @description from/to are inclusive UTC creation dates in YYYY-MM-DD format. Snippet segments are plain text; render highlighted segments as text within mark elements.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    Q?: string;
+                    Page?: number | string;
+                    PageSize?: number | string;
+                    Status?: components["schemas"]["TicketStatus"];
+                    Priority?: components["schemas"]["TicketPriority"];
+                    CategoryId?: string;
+                    AgentId?: string;
+                    From?: string;
+                    To?: string;
+                    Sort?: components["schemas"]["SearchSort"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TicketSearchPage"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/csrf": {
         parameters: {
             query?: never;
@@ -675,6 +743,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tickets/{id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AttachmentView"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": components["schemas"]["UploadAttachmentForm"];
+                    "application/x-www-form-urlencoded": components["schemas"]["UploadAttachmentForm"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AttachmentView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tickets/{id}/attachments/{attachmentId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    attachmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -689,6 +856,25 @@ export interface components {
             agentId: null | string;
             /** Format: int32 */
             expectedVersion: number | string;
+        };
+        AttachmentView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            /** Format: uuid */
+            messageId: null | string;
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            size: number | string;
+            internal: boolean;
+            /** Format: uuid */
+            uploadedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int32 */
+            ticketVersion: number | string;
         };
         AuditView: {
             /** Format: uuid */
@@ -727,6 +913,8 @@ export interface components {
         ForgotPasswordRequest: {
             email: string;
         };
+        /** Format: binary */
+        IFormFile: string;
         LoginRequest: {
             email: string;
             password: string;
@@ -754,6 +942,14 @@ export interface components {
             /** Format: int32 */
             expectedVersion: number | string;
         };
+        ProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
+        };
         RegisterRequest: {
             email: string;
             password: string;
@@ -763,6 +959,12 @@ export interface components {
             email: string;
             token: string;
             password: string;
+        };
+        /** @enum {unknown} */
+        SearchSort: "relevance" | "newest";
+        SearchTextSegment: {
+            text: string;
+            highlighted: boolean;
         };
         StatusMessage: {
             message: string;
@@ -805,6 +1007,24 @@ export interface components {
         };
         /** @enum {unknown} */
         TicketPriority: "low" | "medium" | "high" | "urgent";
+        TicketSearchItem: {
+            ticket: components["schemas"]["TicketListItem"];
+            snippet: components["schemas"]["SearchTextSegment"][];
+        };
+        TicketSearchPage: {
+            items: components["schemas"]["TicketSearchItem"][];
+            /** Format: int32 */
+            total: number | string;
+            /** Format: int32 */
+            page: number | string;
+            /** Format: int32 */
+            pageSize: number | string;
+            /**
+             * Format: int32
+             * @default 1000
+             */
+            candidateLimit: number | string;
+        };
         /** @enum {unknown} */
         TicketStatus: "open" | "inProgress" | "waitingForCustomer" | "resolved" | "closed";
         TicketView: {
@@ -833,6 +1053,13 @@ export interface components {
             updatedAt: string;
             messages: components["schemas"]["MessageView"][];
             audit: components["schemas"]["AuditView"][];
+        };
+        UploadAttachmentForm: {
+            file: components["schemas"]["IFormFile"];
+            /** Format: int32 */
+            expectedVersion?: number | string;
+            /** Format: uuid */
+            messageId?: null | string;
         };
         UserView: {
             /** Format: uuid */

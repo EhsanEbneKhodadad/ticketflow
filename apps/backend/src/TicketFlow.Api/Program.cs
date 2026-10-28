@@ -2,7 +2,9 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Antiforgery;
 using TicketFlow.Api.Errors;
 using TicketFlow.Api.Features.Auth;
+using TicketFlow.Api.Features.Attachments;
 using TicketFlow.Api.Features.Tickets;
+using TicketFlow.Api.Features.Search;
 using TicketFlow.Api.Security;
 using TicketFlow.Infrastructure.Identity;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -49,7 +51,9 @@ _ = app.Services.GetRequiredService<AuthSettings>();
 app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseExpectedUserPrecondition();
 app.UseRateLimiter();
+app.UseAttachmentBodyLimit();
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/api/v1")
@@ -64,18 +68,21 @@ app.Use(async (context, next) =>
                 Status = 400,
                 Title = "Invalid request verification token.",
                 Detail = "Refresh the page and try again."
-            });
+            }, options: (System.Text.Json.JsonSerializerOptions?)null, contentType: "application/problem+json");
             return;
         }
     }
     await next(context);
 });
 app.UseStatusCodePages();
+app.UseTicketQueryNormalization();
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 app.MapSystemInfo();
 app.MapAuth();
 app.MapTickets();
+app.MapSearch();
+app.MapAttachments();
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")) app.MapOpenApi();
 await app.RunAsync();
 

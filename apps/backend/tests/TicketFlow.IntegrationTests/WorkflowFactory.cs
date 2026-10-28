@@ -6,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TicketFlow.Application.Abstractions;
 using TicketFlow.Application.Auth;
+using TicketFlow.Application.Attachments;
 using TicketFlow.Infrastructure.Persistence;
+using TicketFlow.Application.Search;
 
 namespace TicketFlow.IntegrationTests;
 
@@ -20,9 +22,10 @@ public sealed class ResetCapture : IPasswordResetSender
     }
 }
 
-public sealed class WorkflowFactory(string connection) : WebApplicationFactory<Program>
+public sealed class WorkflowFactory(string connection, IReadOnlyDictionary<string, string?>? settings = null, ITicketSearchIndex? searchIndex = null) : WebApplicationFactory<Program>
 {
     public ResetCapture Reset { get; } = new();
+    public AttachmentStorageCapture Storage { get; } = new();
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -31,11 +34,18 @@ public sealed class WorkflowFactory(string connection) : WebApplicationFactory<P
             ["ConnectionStrings:Database"] = connection,
             ["Seed:Enabled"] = "true",
             ["Seed:DemoPassword"] = "TicketFlowDemo!2026"
-        }));
+        }).AddInMemoryCollection(settings ?? new Dictionary<string, string?>()));
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IPasswordResetSender>();
             services.AddSingleton<IPasswordResetSender>(Reset);
+            services.RemoveAll<IAttachmentStorage>();
+            services.AddSingleton<IAttachmentStorage>(Storage);
+            if (searchIndex is not null)
+            {
+                services.RemoveAll<ITicketSearchIndex>();
+                services.AddSingleton(searchIndex);
+            }
         });
     }
 
