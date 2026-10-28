@@ -3,6 +3,9 @@ x-backend-env: &backend-env
   DOTNET_ENVIRONMENT: Development
   ASPNETCORE_ENVIRONMENT: Development
   ASPNETCORE_URLS: http://+:8080
+  Mail__Host: mailpit
+  Mail__Port: 1025
+  App__PublicUrl: http://localhost:3000
   ConnectionStrings__Database: Host=postgres;Port=5432;Database=${POSTGRES_DB:?Copy .env.example to .env};Username=${POSTGRES_USER:?Copy .env.example to .env};Password=${POSTGRES_PASSWORD:?Copy .env.example to .env}
 services:
   postgres:
@@ -58,6 +61,7 @@ services:
     environment:
       <<: *backend-env
       Seed__Enabled: "true"
+      Seed__DemoPassword: ${DEMO_PASSWORD:-}
     command: ["TicketFlow.Api.dll", "--migrate", "--seed"]
     depends_on:
       postgres: { condition: service_healthy }

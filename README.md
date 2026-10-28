@@ -101,3 +101,7 @@ Next: identity and tickets; attachments and search; jobs and notifications; dash
 ## Verification status
 
 See [verification notes](docs/verification.md) for passed checks and pending sandbox-dependent acceptance checks.
+
+## Milestone 2 API
+
+Authentication, role-scoped tickets, conversations, internal notes, optimistic concurrency, and audit history are implemented. See [API setup and verification](docs/runbooks/milestone-2-api.md). The frontend workflow is delivered in a separate dependent PR.
