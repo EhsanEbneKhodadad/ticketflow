@@ -4,7 +4,7 @@ A support ticket platform built as a Next.js + ASP.NET Core monorepo.
 
 Source: https://github.com/EhsanEbneKhodadad/ticketflow
 
-**Milestone 2: authentication and ticket workflow.** Customers can register, create and edit requests, exchange replies, close and reopen tickets. Support staff manage assignments, priorities, status transitions, internal notes, and audit history. The monorepo includes generated API types, explicit database migrations, scoped AI rules, and CI.
+**Milestone 3: private attachments and public ticket search.** Customers can register, create and edit requests, exchange replies, close and reopen tickets. Support staff manage assignments, priorities, status transitions, internal notes, and audit history. Authorized participants can upload and download PDF, PNG, JPEG and UTF-8 text files on tickets and existing replies (10 MiB each, 10 total per ticket); internal-note files stay staff-only. The search workspace supports public full text, ticket numbers, metadata and inclusive UTC creation-day filters when the optional Elasticsearch service and worker are enabled. Search results may lag updates and cover a fixed window of up to 1,000 authorized matching candidates. The monorepo includes generated API types, explicit database migrations, scoped AI rules, and CI.
 
 ## Requirements
 
