@@ -1,18 +1,20 @@
 "use client";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, type User } from "@/features/auth/auth-provider";
 import {
-  statusLabels,
-  priorityLabels,
+  ticketStatuses,
+  ticketPriorities,
   dateLabel,
 } from "@/features/tickets/api";
-import { api, ApiError, errorMessage } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
 import type { components } from "@ticketflow/api-client";
 import {
   searchParameters,
@@ -35,6 +37,11 @@ export function SearchSnippet({ segments }: { segments: SearchSegment[] }) {
   );
 }
 export function TicketSearch({ params }: { params: Record<string, string> }) {
+  const locale = useLocale();
+  const t = useTranslations("Search");
+  const errorMessage = useErrorMessage();
+  const statusText = useTranslations("TicketStatus");
+  const priorityText = useTranslations("Priority");
   const { user } = useAuth();
   const client = useQueryClient();
   const router = useRouter();
@@ -76,8 +83,8 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
     enabled: !!user && user.role !== "Customer",
   });
   const sortLabels: Record<SearchSort, string> = {
-    relevance: "Relevance",
-    newest: "Newest first",
+    relevance: t("relevance"),
+    newest: t("newest"),
   };
   const navigatePage = (value: number) => {
     const next = new URLSearchParams(queryParams);
@@ -88,9 +95,9 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
     <section>
       <div className="page-heading">
         <div>
-          <p className="page-eyebrow">FIND THE CONVERSATION</p>
-          <h1>Search tickets</h1>
-          <p>Search ticket numbers, requests, tags and public replies.</p>
+          <p className="page-eyebrow">{t("eyebrow")}</p>
+          <h1>{t("title")}</h1>
+          <p>{t("intro")}</p>
         </div>
         <Search size={25} color="#718568" />
       </div>
@@ -99,56 +106,54 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
         onSubmit={handleSubmit((input) => {
           setValidation("");
           if (input.from && input.to && input.from > input.to) {
-            setValidation("Choose an end date on or after the start date.");
+            setValidation(t("dateError"));
             return;
           }
           router.push("/search?" + searchParameters({ ...input, page: "1" }));
         })}
       >
         <div className="form-field search-query">
-          <label htmlFor="search-query">Keywords or ticket number</label>
+          <label htmlFor="search-query">{t("keywords")}</label>
           <input
             id="search-query"
-            placeholder="Search public conversations…"
+            placeholder={t("placeholder")}
             maxLength={160}
             {...register("q")}
           />
-          <p className="field-hint">
-            Leave keywords blank to search using filters only.
-          </p>
+          <p className="field-hint">{t("filterHint")}</p>
         </div>
         <div className="search-filter-grid">
           <div className="form-field">
-            <label htmlFor="search-status">Status</label>
+            <label htmlFor="search-status">{t("status")}</label>
             <select id="search-status" {...register("status")}>
-              <option value="">All statuses</option>
-              {Object.entries(statusLabels).map(([value, label]) => (
+              <option value="">{t("allStatuses")}</option>
+              {ticketStatuses.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {statusText(value)}
                 </option>
               ))}
             </select>
           </div>
           <div className="form-field">
-            <label htmlFor="search-priority">Priority</label>
+            <label htmlFor="search-priority">{t("priority")}</label>
             <select id="search-priority" {...register("priority")}>
-              <option value="">All priorities</option>
-              {Object.entries(priorityLabels).map(([value, label]) => (
+              <option value="">{t("allPriorities")}</option>
+              {ticketPriorities.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {priorityText(value)}
                 </option>
               ))}
             </select>
           </div>
           <div className="form-field">
-            <label htmlFor="search-category">Category</label>
+            <label htmlFor="search-category">{t("category")}</label>
             <Controller
               name="categoryId"
               control={control}
               defaultValue={params.categoryId ?? ""}
               render={({ field }) => (
                 <select id="search-category" {...field}>
-                  <option value="">All categories</option>
+                  <option value="">{t("allCategories")}</option>
                   {categories.data?.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
@@ -160,14 +165,14 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
           </div>
           {user?.role !== "Customer" && (
             <div className="form-field">
-              <label htmlFor="search-agent">Assigned agent</label>
+              <label htmlFor="search-agent">{t("assignedAgent")}</label>
               <Controller
                 name="agentId"
                 control={control}
                 defaultValue={params.agentId ?? ""}
                 render={({ field }) => (
                   <select id="search-agent" {...field}>
-                    <option value="">Any agent</option>
+                    <option value="">{t("anyAgent")}</option>
                     {agents.data?.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
@@ -179,15 +184,15 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
             </div>
           )}
           <div className="form-field">
-            <label htmlFor="search-from">Created from (UTC)</label>
+            <label htmlFor="search-from">{t("from")}</label>
             <input id="search-from" type="date" {...register("from")} />
           </div>
           <div className="form-field">
-            <label htmlFor="search-to">Created through (UTC)</label>
+            <label htmlFor="search-to">{t("through")}</label>
             <input id="search-to" type="date" {...register("to")} />
           </div>
           <div className="form-field">
-            <label htmlFor="search-sort">Sort</label>
+            <label htmlFor="search-sort">{t("sort")}</label>
             <select id="search-sort" {...register("sort")}>
               {Object.entries(sortLabels).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -199,7 +204,7 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
         </div>
         {(categories.error || agents.error) && (
           <p role="alert" className="field-error">
-            Some filter choices could not be loaded.{" "}
+            {t("filterError")}{" "}
             <button
               type="button"
               onClick={() => {
@@ -207,7 +212,7 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
                 if (user?.role !== "Customer") void agents.refetch();
               }}
             >
-              Retry filter choices
+              {t("retryFilters")}
             </button>
           </p>
         )}
@@ -217,52 +222,50 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
           </p>
         )}
         <div className="search-form-actions">
-          <Button type="submit">Search public content</Button>
-          <Link href="/search">Clear filters</Link>
+          <Button type="submit">{t("submit")}</Button>
+          <Link href="/search">{t("clear")}</Link>
         </div>
       </form>
-      <p className="search-explanation">
-        Results can take a short time to reflect changes. Only public content is
-        searched; internal notes and files are excluded. Results cover up to
-        1,000 matching candidates available to your account.
-      </p>
+      <p className="search-explanation">{t("explanation")}</p>
       <div
         className="card search-results"
-        aria-label="Search results"
+        aria-label={t("results")}
         aria-busy={query.isFetching}
       >
         {query.isPending ? (
           <div className="page-state" role="status">
             <span className="spinner" />
-            Searching tickets…
+            {t("loading")}
           </div>
         ) : query.error ? (
           <div className="page-state" role="alert">
             <h2>
               {query.error instanceof ApiError && query.error.status === 503
-                ? "Search is temporarily unavailable."
+                ? t("unavailable")
                 : query.error instanceof ApiError && query.error.status === 401
-                  ? "Sign in to search your tickets."
-                  : "Search could not be completed."}
+                  ? t("signIn")
+                  : t("failed")}
             </h2>
             <p>{errorMessage(query.error)}</p>
             <div className="search-form-actions">
               <Button variant="outline" onClick={() => void query.refetch()}>
-                Retry search
+                {t("retry")}
               </Button>
-              <Link href="/tickets">Browse tickets</Link>
+              <Link href="/tickets">{t("browse")}</Link>
             </div>
           </div>
         ) : !query.data?.items.length ? (
           <div className="page-state">
-            <h2>No tickets match your search.</h2>
-            <p>Try another phrase or adjust the filters.</p>
+            <h2>{t("empty")}</h2>
+            <p>{t("emptyHint")}</p>
           </div>
         ) : (
           <>
             <div className="search-results-heading">
-              {query.data.total} matching{" "}
-              {query.data.total === 1 ? "ticket" : "tickets"} · Page {page}
+              {new Intl.NumberFormat(locale).format(Number(query.data.total))}{" "}
+              {t("matching")}{" "}
+              {Number(query.data.total) === 1 ? t("ticket") : t("tickets")} ·{" "}
+              {t("page")} {new Intl.NumberFormat(locale).format(Number(page))}
             </div>
             <ol className="search-result-list">
               {query.data.items.map(({ ticket, snippet }) => (
@@ -270,12 +273,12 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
                   <div className="search-result-top">
                     <span className="ticket-number">{ticket.number}</span>
                     <span className={"status-badge status-" + ticket.status}>
-                      {statusLabels[ticket.status]}
+                      {statusText(ticket.status)}
                     </span>
                     <span
                       className={"priority-badge priority-" + ticket.priority}
                     >
-                      {priorityLabels[ticket.priority]}
+                      {priorityText(ticket.priority)}
                     </span>
                   </div>
                   <h2>
@@ -283,8 +286,8 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
                   </h2>
                   <SearchSnippet segments={snippet} />
                   <p className="ticket-row-meta">
-                    {ticket.category} · {ticket.agentName ?? "Unassigned"} ·
-                    Opened {dateLabel(ticket.createdAt)}
+                    {ticket.category} · {ticket.agentName ?? t("anyAgent")} ·{" "}
+                    {t("opened")} {dateLabel(ticket.createdAt, locale)}
                   </p>
                 </li>
               ))}
@@ -292,21 +295,21 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
           </>
         )}
         <div className="inbox-footer">
-          <span>20 results per page · Maximum 1,000 candidates</span>
+          <span>{t("pageLimit")}</span>
           <div className="pagination">
             <Button
               size="small"
               variant="outline"
-              aria-label="Previous search page"
+              aria-label={t("previous")}
               disabled={page <= 1 || query.isFetching}
               onClick={() => navigatePage(page - 1)}
             >
-              Previous
+              {t("previous")}
             </Button>
             <Button
               size="small"
               variant="outline"
-              aria-label="Next search page"
+              aria-label={t("next")}
               disabled={
                 page >= 50 ||
                 page * 20 >= Number(query.data?.total ?? 0) ||
@@ -314,7 +317,7 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
               }
               onClick={() => navigatePage(page + 1)}
             >
-              Next
+              {t("next")}
             </Button>
           </div>
         </div>

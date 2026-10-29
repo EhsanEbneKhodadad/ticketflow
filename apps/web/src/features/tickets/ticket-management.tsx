@@ -1,14 +1,15 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/features/auth/auth-provider";
-import { ApiError, errorMessage } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
 import {
   ticketsApi,
-  statusLabels,
-  priorityLabels,
+  ticketPriorities,
   type Ticket,
   type Status,
   type Priority,
@@ -35,6 +36,10 @@ export function TicketManagement({
   staff: boolean;
   onError: (value: string) => void;
 }) {
+  const t = useTranslations("Tickets");
+  const errorMessage = useErrorMessage();
+  const statusText = useTranslations("TicketStatus");
+  const priorityText = useTranslations("Priority");
   const client = useQueryClient();
   const [status, setStatus] = useState(ticket.status);
   const [priority, setPriority] = useState(ticket.priority);
@@ -79,7 +84,7 @@ export function TicketManagement({
     <section className="card side-card" aria-labelledby="management-title">
       <h2 id="management-title">
         <SlidersHorizontal size={13} />
-        {staff ? "Ticket management" : "Ticket status"}
+        {staff ? t("managementStaff") : t("managementCustomer")}
       </h2>
       {staff ? (
         <>
@@ -90,7 +95,7 @@ export function TicketManagement({
               mutation.mutate({ kind: "status", value: status });
             }}
           >
-            <label htmlFor="manage-status">Status</label>
+            <label htmlFor="manage-status">{t("status")}</label>
             <div className="side-control">
               <select
                 id="manage-status"
@@ -98,11 +103,11 @@ export function TicketManagement({
                 onChange={(e) => setStatus(e.target.value as Status)}
               >
                 <option value={ticket.status}>
-                  {statusLabels[ticket.status]}
+                  {statusText(ticket.status)}
                 </option>
                 {transitions[ticket.status].map((value) => (
                   <option key={value} value={value}>
-                    {statusLabels[value]}
+                    {statusText(value)}
                   </option>
                 ))}
               </select>
@@ -110,10 +115,10 @@ export function TicketManagement({
                 type="submit"
                 size="small"
                 variant="outline"
-                aria-label="Update status"
+                aria-label={t("updateStatus")}
                 disabled={mutation.isPending || status === ticket.status}
               >
-                Save
+                {t("save")}
               </Button>
             </div>
           </form>
@@ -124,16 +129,16 @@ export function TicketManagement({
               mutation.mutate({ kind: "priority", value: priority });
             }}
           >
-            <label htmlFor="manage-priority">Priority</label>
+            <label htmlFor="manage-priority">{t("priority")}</label>
             <div className="side-control">
               <select
                 id="manage-priority"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority)}
               >
-                {Object.entries(priorityLabels).map(([value, label]) => (
+                {ticketPriorities.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {priorityText(value)}
                   </option>
                 ))}
               </select>
@@ -141,10 +146,10 @@ export function TicketManagement({
                 type="submit"
                 size="small"
                 variant="outline"
-                aria-label="Update priority"
+                aria-label={t("updatePriority")}
                 disabled={mutation.isPending || priority === ticket.priority}
               >
-                Save
+                {t("save")}
               </Button>
             </div>
           </form>
@@ -155,7 +160,7 @@ export function TicketManagement({
               mutation.mutate({ kind: "assignment", value: agent });
             }}
           >
-            <label htmlFor="manage-assignment">Assignee</label>
+            <label htmlFor="manage-assignment">{t("assignee")}</label>
             <div className="side-control">
               <select
                 id="manage-assignment"
@@ -163,7 +168,7 @@ export function TicketManagement({
                 onChange={(e) => setAgent(e.target.value)}
                 disabled={!agents.data}
               >
-                <option value="">Unassigned</option>
+                <option value="">{t("unassigned")}</option>
                 {agents.data?.map((person) => (
                   <option key={person.id} value={person.id}>
                     {person.name}
@@ -174,21 +179,21 @@ export function TicketManagement({
                 type="submit"
                 size="small"
                 variant="outline"
-                aria-label="Update assignee"
+                aria-label={t("updateAssignee")}
                 disabled={
                   mutation.isPending ||
                   !agents.data ||
                   agent === (ticket.agentId ?? "")
                 }
               >
-                Save
+                {t("save")}
               </Button>
             </div>
             {agents.error && (
               <p role="alert">
-                Agents could not be loaded.{" "}
+                {t("agentsError")}{" "}
                 <button type="button" onClick={() => void agents.refetch()}>
-                  Try again
+                  {t("retry")}
                 </button>
               </p>
             )}
@@ -197,14 +202,11 @@ export function TicketManagement({
       ) : (
         <div className="side-field">
           <span className={"status-badge status-" + ticket.status}>
-            {statusLabels[ticket.status]}
+            {statusText(ticket.status)}
           </span>
           {ticket.status === "resolved" && (
             <>
-              <p>
-                All sorted? Close the ticket, or reopen it if you need another
-                hand.
-              </p>
+              <p>{t("resolvedNote")}</p>
               <div style={{ display: "flex", gap: 7, marginTop: 12 }}>
                 <Button
                   size="small"
@@ -213,7 +215,7 @@ export function TicketManagement({
                     mutation.mutate({ kind: "status", value: "closed" })
                   }
                 >
-                  Close ticket
+                  {t("close")}
                 </Button>
                 <Button
                   size="small"
@@ -223,14 +225,14 @@ export function TicketManagement({
                     mutation.mutate({ kind: "status", value: "open" })
                   }
                 >
-                  Reopen ticket
+                  {t("reopen")}
                 </Button>
               </div>
             </>
           )}
           {ticket.status === "closed" && (
             <>
-              <p>Need more help with this request? Reopen the conversation.</p>
+              <p>{t("closedNote")}</p>
               <Button
                 style={{ marginTop: 12 }}
                 size="small"
@@ -240,12 +242,12 @@ export function TicketManagement({
                   mutation.mutate({ kind: "status", value: "open" })
                 }
               >
-                Reopen ticket
+                {t("reopen")}
               </Button>
             </>
           )}
           {!["resolved", "closed"].includes(ticket.status) && (
-            <p>Your support team will update the status as work progresses.</p>
+            <p>{t("progressNote")}</p>
           )}
         </div>
       )}

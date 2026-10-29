@@ -1,24 +1,72 @@
 "use client";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Pencil, Clock, Tag, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
-import { ApiError, errorMessage } from "@/lib/api";
-import {
-  ticketsApi,
-  statusLabels,
-  priorityLabels,
-  initials,
-  timeLabel,
-} from "./api";
+import { ApiError } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
+import { ticketsApi, initials, timeLabel, type Ticket } from "./api";
 import { Conversation } from "./conversation";
 import { TicketManagement } from "./ticket-management";
 import { AttachmentPanel } from "@/features/attachments/attachment-panel";
 import { TicketForm } from "./ticket-form";
 
 export function TicketDetail({ id }: { id: string }) {
+  const locale = useLocale();
+  const t = useTranslations("Tickets");
+  const errorMessage = useErrorMessage();
+  const statusText = useTranslations("TicketStatus");
+  const priorityText = useTranslations("Priority");
+  const auditSummary = (event: Ticket["audit"][number]) => {
+    if (event.kind === "created") return t("auditCreated");
+    if (event.kind === "statusChanged") {
+      const match =
+        /Status changed from (Open|InProgress|WaitingForCustomer|Resolved|Closed) to (Open|InProgress|WaitingForCustomer|Resolved|Closed)/.exec(
+          event.summary,
+        );
+      if (match) {
+        const keys = {
+          Open: "open",
+          InProgress: "inProgress",
+          WaitingForCustomer: "waitingForCustomer",
+          Resolved: "resolved",
+          Closed: "closed",
+        } as const;
+        return t("auditStatusChanged", {
+          from: statusText(keys[match[1] as keyof typeof keys]),
+          to: statusText(keys[match[2] as keyof typeof keys]),
+        });
+      }
+    }
+    if (event.kind === "priorityChanged") {
+      const match = /Priority set to (Low|Medium|High|Urgent)/.exec(
+        event.summary,
+      );
+      if (match) {
+        const keys = {
+          Low: "low",
+          Medium: "medium",
+          High: "high",
+          Urgent: "urgent",
+        } as const;
+        return t("auditPriorityChanged", {
+          priority: priorityText(keys[match[1] as keyof typeof keys]),
+        });
+      }
+    }
+    if (event.kind === "assigned")
+      return event.summary.startsWith("Assigned to ")
+        ? t("auditAssigned", { name: event.summary.slice(12) })
+        : t("auditAssignmentRemoved");
+    if (event.kind === "edited") return t("auditEdited");
+    if (event.kind === "internalNoteAdded") return t("auditInternalNote");
+    if (event.kind === "replyAdded") return t("auditReplyAdded");
+    if (event.kind === "attachmentAdded") return t("auditAttachmentAdded");
+    return t("auditUpdate");
+  };
   const { user } = useAuth();
   const query = useQuery({
     queryKey: ["ticket", id, user?.id],
@@ -31,7 +79,7 @@ export function TicketDetail({ id }: { id: string }) {
     return (
       <div className="page-state" role="status">
         <span className="spinner" />
-        Loading ticket…
+        {t("loadingTicket")}
       </div>
     );
   if (query.error)
@@ -39,16 +87,16 @@ export function TicketDetail({ id }: { id: string }) {
       <div className="card page-state" role="alert">
         <h2>
           {query.error instanceof ApiError && query.error.status === 404
-            ? "Ticket not found."
-            : "We couldn't load this ticket."}
+            ? t("notFound")
+            : t("loadTicketError")}
         </h2>
         <p>
           {query.error instanceof ApiError && query.error.status === 404
-            ? "The ticket may not exist, or it isn't available to your account."
+            ? t("notVisible")
             : errorMessage(query.error)}
         </p>
         <Button asChild variant="outline">
-          <Link href="/tickets">Back to tickets</Link>
+          <Link href="/tickets">{t("backToTickets")}</Link>
         </Button>
       </div>
     );
@@ -62,7 +110,7 @@ export function TicketDetail({ id }: { id: string }) {
     <section>
       <Link href="/tickets" className="back-link">
         <ArrowLeft size={13} />
-        All tickets
+        {t("allTickets")}
       </Link>
       <div className="page-heading ticket-detail-heading">
         <div>
@@ -73,12 +121,14 @@ export function TicketDetail({ id }: { id: string }) {
           <h1>{ticket.title}</h1>
           <div className="ticket-heading-badges">
             <span className={"status-badge status-" + ticket.status}>
-              {statusLabels[ticket.status]}
+              {statusText(ticket.status)}
             </span>
             <span className={"priority-badge priority-" + ticket.priority}>
-              {priorityLabels[ticket.priority]} priority
+              {priorityText(ticket.priority)}
             </span>
-            <span>Opened {timeLabel(ticket.createdAt)}</span>
+            <span>
+              {t("opened")} {timeLabel(ticket.createdAt, locale)}
+            </span>
           </div>
         </div>
         {editable && (
@@ -88,7 +138,7 @@ export function TicketDetail({ id }: { id: string }) {
             onClick={() => setEditing(true)}
           >
             <Pencil size={12} />
-            Edit ticket
+            {t("editTicket")}
           </Button>
         )}
       </div>
@@ -96,7 +146,7 @@ export function TicketDetail({ id }: { id: string }) {
         <div className="ticket-main-column">
           <section className="card">
             <div className="detail-card-heading">
-              <h2>Original request</h2>
+              <h2>{t("originalRequest")}</h2>
               <span>{ticket.number}</span>
             </div>
             <p className="ticket-description">{ticket.description}</p>
@@ -107,7 +157,7 @@ export function TicketDetail({ id }: { id: string }) {
               >
                 {initials(ticket.requesterName)}
               </span>
-              Submitted by {ticket.requesterName}
+              {t("submittedBy")} {ticket.requesterName}
             </div>
           </section>
           {user && (
@@ -139,7 +189,7 @@ export function TicketDetail({ id }: { id: string }) {
             }
           />
         </div>
-        <aside className="ticket-sidebar" aria-label="Ticket information">
+        <aside className="ticket-sidebar" aria-label={t("ticketInformation")}>
           <div>
             {managementError && (
               <div
@@ -160,11 +210,11 @@ export function TicketDetail({ id }: { id: string }) {
           <section className="card side-card">
             <h2>
               <UserRound size={13} />
-              People & details
+              {t("peopleDetails")}
             </h2>
             <dl>
               <div className="side-field">
-                <dt>Requested by</dt>
+                <dt>{t("requestedBy")}</dt>
                 <dd className="assignee-cell">
                   <span className="avatar">
                     {initials(ticket.requesterName)}
@@ -173,15 +223,15 @@ export function TicketDetail({ id }: { id: string }) {
                 </dd>
               </div>
               <div className="side-field">
-                <dt>Assigned to</dt>
-                <dd>{ticket.agentName ?? "Waiting for an agent"}</dd>
+                <dt>{t("assignedTo")}</dt>
+                <dd>{ticket.agentName ?? t("waitingAgent")}</dd>
               </div>
               <div className="side-field">
-                <dt>Category</dt>
+                <dt>{t("category")}</dt>
                 <dd>{ticket.category}</dd>
               </div>
               <div className="side-field">
-                <dt>Tags</dt>
+                <dt>{t("tags")}</dt>
                 <dd className="tags-row">
                   {ticket.tags.length ? (
                     ticket.tags.map((tag) => (
@@ -194,7 +244,7 @@ export function TicketDetail({ id }: { id: string }) {
                       </span>
                     ))
                   ) : (
-                    <span>No tags</span>
+                    <span>{t("noTags")}</span>
                   )}
                 </dd>
               </div>
@@ -203,19 +253,15 @@ export function TicketDetail({ id }: { id: string }) {
           <section className="card side-card" aria-labelledby="activity-title">
             <h2 id="activity-title">
               <Clock size={13} />
-              Activity history
+              {t("activity")}
             </h2>
             <ol className="activity-list">
               {[...ticket.audit].reverse().map((event) => (
                 <li key={event.id}>
                   <strong>{event.actorName}</strong>
-                  <div>
-                    {event.summary
-                      .replaceAll("InProgress", "In progress")
-                      .replaceAll("WaitingForCustomer", "Waiting for customer")}
-                  </div>
+                  <div>{auditSummary(event)}</div>
                   <time dateTime={event.createdAt}>
-                    {timeLabel(event.createdAt)}
+                    {timeLabel(event.createdAt, locale)}
                   </time>
                 </li>
               ))}

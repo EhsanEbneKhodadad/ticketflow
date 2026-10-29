@@ -1,7 +1,8 @@
 "use client";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,24 +10,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/features/auth/auth-provider";
-import { ApiError, errorMessage } from "@/lib/api";
-import { ticketsApi, priorityLabels, type Ticket } from "./api";
-
-const schema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(5, "Use at least 5 characters.")
-    .max(160, "Keep the title under 160 characters."),
-  description: z
-    .string()
-    .trim()
-    .min(10, "Add a little more detail (at least 10 characters).")
-    .max(10000),
-  categoryId: z.string().min(1, "Choose a category."),
-  tags: z.string().max(150),
-  priority: z.enum(["low", "medium", "high", "urgent"]),
-});
+import { ApiError } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
+import { ticketsApi, ticketPriorities, type Ticket } from "./api";
 
 export function TicketForm({
   ticket,
@@ -35,6 +21,20 @@ export function TicketForm({
   ticket?: Ticket;
   onCancel?: () => void;
 }) {
+  const t = useTranslations("Tickets");
+  const errorMessage = useErrorMessage();
+  const priorityText = useTranslations("Priority");
+  const schema = z.object({
+    title: z
+      .string()
+      .trim()
+      .min(5, t("errorTitle"))
+      .max(160, t("errorTitleMax")),
+    description: z.string().trim().min(10, t("errorDescription")).max(10000),
+    categoryId: z.string().min(1, t("errorCategory")),
+    tags: z.string().max(150),
+    priority: z.enum(["low", "medium", "high", "urgent"]),
+  });
   const [baseVersion] = useState(ticket?.version);
   const router = useRouter();
   const client = useQueryClient();
@@ -93,25 +93,21 @@ export function TicketForm({
       {onCancel ? (
         <button className="back-link" onClick={onCancel}>
           <ArrowLeft size={13} />
-          Back to ticket
+          {t("backToTicket")}
         </button>
       ) : (
         <Link className="back-link" href="/tickets">
           <ArrowLeft size={13} />
-          All tickets
+          {t("allTickets")}
         </Link>
       )}
       <div className="page-heading">
         <div>
           <div className="page-eyebrow">
-            {ticket ? ticket.number : "LET'S GET THIS SORTED"}
+            {ticket ? ticket.number : t("formKicker")}
           </div>
-          <h1>{ticket ? "Edit ticket" : "How can we help?"}</h1>
-          <p>
-            {ticket
-              ? "Update the details so everyone has the right context."
-              : "Tell us what's happening. The right details help us find the right answer."}
-          </p>
+          <h1>{ticket ? t("editTitle") : t("newTitle")}</h1>
+          <p>{ticket ? t("editDescription") : t("newDescription")}</p>
         </div>
       </div>
       <div className="card ticket-form-card">
@@ -120,15 +116,8 @@ export function TicketForm({
             <MessageSquare size={17} />
           </span>
           <div>
-            <strong>
-              {ticket
-                ? "Keep your request up to date"
-                : "A new conversation starts here"}
-            </strong>
-            <p>
-              Be specific, share context, and leave out passwords or private
-              credentials.
-            </p>
+            <strong>{ticket ? t("keepUpdated") : t("newConversation")}</strong>
+            <p>{t("privacyHint")}</p>
           </div>
         </div>
         <form
@@ -137,10 +126,10 @@ export function TicketForm({
           noValidate
         >
           <div className="form-field">
-            <label htmlFor="ticket-title">Subject</label>
+            <label htmlFor="ticket-title">{t("subject")}</label>
             <input
               id="ticket-title"
-              placeholder="A short summary of the issue"
+              placeholder={t("subjectPlaceholder")}
               {...register("title")}
               aria-invalid={!!errors.title}
               aria-describedby={errors.title ? "title-error" : undefined}
@@ -152,11 +141,11 @@ export function TicketForm({
             )}
           </div>
           <div className="form-field">
-            <label htmlFor="ticket-description">What happened?</label>
+            <label htmlFor="ticket-description">{t("whatHappened")}</label>
             <textarea
               id="ticket-description"
               rows={6}
-              placeholder="Describe the issue, what you expected, and anything you've already tried…"
+              placeholder={t("descriptionPlaceholder")}
               {...register("description")}
               aria-invalid={!!errors.description}
               aria-describedby={
@@ -171,7 +160,7 @@ export function TicketForm({
           </div>
           <div className="form-columns">
             <div className="form-field">
-              <label htmlFor="ticket-category">Category</label>
+              <label htmlFor="ticket-category">{t("category")}</label>
               <select
                 id="ticket-category"
                 {...register("categoryId")}
@@ -180,8 +169,8 @@ export function TicketForm({
               >
                 <option value="">
                   {categories.isPending
-                    ? "Loading categories…"
-                    : "Choose a category"}
+                    ? t("loadingCategories")
+                    : t("chooseCategory")}
                 </option>
                 {categories.data?.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -194,62 +183,57 @@ export function TicketForm({
               )}
               {categories.error && (
                 <div className="field-error" role="alert">
-                  Categories could not be loaded.{" "}
+                  {t("categoriesError")}{" "}
                   <button
                     type="button"
                     onClick={() => void categories.refetch()}
                   >
-                    Try again
+                    {t("retry")}
                   </button>
                 </div>
               )}
             </div>
             {!ticket && (
               <div className="form-field">
-                <label htmlFor="ticket-priority">Priority</label>
+                <label htmlFor="ticket-priority">{t("priority")}</label>
                 <select id="ticket-priority" {...register("priority")}>
-                  {Object.entries(priorityLabels).map(([value, label]) => (
+                  {ticketPriorities.map((value) => (
                     <option key={value} value={value}>
-                      {label}
+                      {priorityText(value)}
                     </option>
                   ))}
                 </select>
-                <p className="field-hint">
-                  Choose the urgency that best fits your request.
-                </p>
+                <p className="field-hint">{t("urgencyHint")}</p>
               </div>
             )}
           </div>
           <div className="form-field">
             <label htmlFor="ticket-tags">
-              Tags <span className="field-hint">(optional)</span>
+              {t("tags")} <span className="field-hint">{t("optional")}</span>
             </label>
             <input
               id="ticket-tags"
-              placeholder="e.g. account, login"
+              placeholder={t("tagPlaceholder")}
               {...register("tags")}
             />
-            <p className="field-hint">
-              Up to 5 tags, separated by commas. Letters, numbers, and hyphens
-              only.
-            </p>
+            <p className="field-hint">{t("tagHint")}</p>
           </div>
           {mutation.error && (
             <div role="alert" className="error-box">
               {errorMessage(mutation.error)}
               {mutation.error instanceof ApiError &&
                 mutation.error.status === 409 &&
-                " Your draft is preserved. Review the latest ticket before trying again."}
+                " " + t("conflict")}
             </div>
           )}
           <div className="form-actions">
             {onCancel ? (
               <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
+                {t("cancel")}
               </Button>
             ) : (
               <Button asChild variant="outline">
-                <Link href="/tickets">Cancel</Link>
+                <Link href="/tickets">{t("cancel")}</Link>
               </Button>
             )}
             <Button
@@ -257,10 +241,10 @@ export function TicketForm({
               disabled={mutation.isPending || !categories.data}
             >
               {mutation.isPending
-                ? "Saving…"
+                ? t("saving")
                 : ticket
-                  ? "Save changes"
-                  : "Create ticket"}
+                  ? t("saveChanges")
+                  : t("createTicket")}
               <ArrowRight size={14} />
             </Button>
           </div>

@@ -2,12 +2,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TicketForm } from "./ticket-form";
 import { ticketsApi, type Ticket } from "./api";
-jest.mock("next/navigation", () => ({
+jest.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 jest.mock("./api", () => ({
   ticketsApi: { categories: jest.fn(), edit: jest.fn() },
-  priorityLabels: { medium: "Medium" },
+  ticketPriorities: ["low", "medium", "high", "urgent"],
 }));
 it("keeps a draft's original concurrency version after a background refetch", async () => {
   const ticket = {

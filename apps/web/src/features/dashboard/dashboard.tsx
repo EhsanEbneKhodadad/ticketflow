@@ -1,13 +1,17 @@
 "use client";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@ticketflow/api-client";
 import { useAuth, type User } from "@/features/auth/auth-provider";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
 import { Button } from "@/components/ui/button";
 
 type DashboardView = components["schemas"]["DashboardView"];
 export function Dashboard() {
+  const t = useTranslations("Dashboard");
+  const errorMessage = useErrorMessage();
   const { user } = useAuth();
   const client = useQueryClient();
   const principal = user?.id;
@@ -27,43 +31,36 @@ export function Dashboard() {
   const staff = user?.role !== "Customer";
   const cards: Array<[string, number | string]> = query.data
     ? [
-        [staff ? "All tickets" : "Your tickets", query.data.total],
-        ["Open", query.data.open],
-        ["In progress", query.data.inProgress],
-        ["Waiting for customer", query.data.waitingForCustomer],
-        ["Resolved", query.data.resolved],
-        ["Closed", query.data.closed],
-        ["Unassigned", query.data.unassigned],
-        ["High or urgent priority", query.data.highPriority],
+        [staff ? t("allTickets") : t("yourTickets"), query.data.total],
+        [t("open"), query.data.open],
+        [t("inProgress"), query.data.inProgress],
+        [t("waiting"), query.data.waitingForCustomer],
+        [t("resolved"), query.data.resolved],
+        [t("closed"), query.data.closed],
+        [t("unassigned"), query.data.unassigned],
+        [t("highUrgent"), query.data.highPriority],
       ]
     : [];
   return (
     <section>
       <div className="page-heading">
         <div>
-          <p className="page-eyebrow">YOUR WORKSPACE</p>
-          <h1>Dashboard</h1>
-          <p>
-            {staff
-              ? "Current ticket counts across the support workspace."
-              : "Current counts for your tickets."}
-          </p>
+          <p className="page-eyebrow">{t("eyebrow")}</p>
+          <h1>{t("title")}</h1>
+          <p>{staff ? t("staffDescription") : t("customerDescription")}</p>
         </div>
-        <Link href="/tickets">View tickets</Link>
+        <Link href="/tickets">{t("viewTickets")}</Link>
       </div>
-      {query.isPending && <p role="status">Loading dashboard…</p>}
+      {query.isPending && <p role="status">{t("loading")}</p>}
       {query.isError && (
         <div className="card page-state">
           <p role="alert">{errorMessage(query.error)}</p>
-          <Button onClick={() => void query.refetch()}>Try again</Button>
+          <Button onClick={() => void query.refetch()}>{t("retry")}</Button>
         </div>
       )}
       {query.data && (
         <>
-          <p className="dashboard-caption">
-            Counts include all ticket creation dates. Unassigned includes every
-            status.
-          </p>
+          <p className="dashboard-caption">{t("countsNote")}</p>
           <div className="dashboard-grid">
             {cards.map(([label, count]) => (
               <article className="card dashboard-card" key={label}>
@@ -74,7 +71,7 @@ export function Dashboard() {
           </div>
           {Number(query.data.total) === 0 && (
             <p className="dashboard-empty">
-              No tickets yet. <Link href="/tickets/new">Create a ticket</Link>
+              {t("empty")} <Link href="/tickets/new">{t("create")}</Link>
             </p>
           )}
         </>

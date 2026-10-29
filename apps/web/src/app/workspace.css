@@ -272,6 +272,20 @@ textarea::placeholder {
   font: 9px monospace;
   letter-spacing: 1px;
 }
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+}
+.language-switcher select {
+  min-height: 34px;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid #dce3d8;
+  border-radius: 5px;
+  background: #fffefa;
+  color: #40523a;
+  font-size: 11px;
+  cursor: pointer;
+}
 .auth-panel {
   width: min(390px, calc(100% - 48px));
   margin: 115px auto 100px;
@@ -461,8 +475,12 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 14px;
   background: #fffefa;
   border-bottom: 1px solid #e1e6db;
+}
+.workspace-header .language-switcher {
+  flex-shrink: 0;
 }
 .workspace-breadcrumb {
   display: flex;
@@ -1193,7 +1211,25 @@ textarea::placeholder {
   }
   .workspace-header {
     height: 64px;
-    padding-inline: 18px;
+    padding-inline: 12px;
+    gap: 8px;
+  }
+  .workspace-breadcrumb {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .workspace-breadcrumb strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .role-pill {
+    flex-shrink: 0;
+  }
+  .workspace-header .language-switcher select {
+    max-width: 78px;
+    padding-inline: 6px 18px;
   }
   .workspace-main {
     padding: 25px 18px 50px;
@@ -1292,6 +1328,23 @@ textarea::placeholder {
   .ui-button {
     transition: none;
   }
+}
+
+[dir="rtl"] .auth-flow > div {
+  border-left: 0;
+  border-right: 1px solid #607b50;
+  margin-inline-start: 4px;
+  margin-inline-end: 0;
+}
+[dir="rtl"] .public-workflow-link {
+  margin-left: 0;
+  margin-inline-start: 20px;
+}
+[dir="rtl"] .language-switcher select {
+  padding: 6px 10px 6px 28px;
+}
+[dir="rtl"] .auth-submit svg {
+  transform: rotate(180deg);
 }
 
 .auth-fields {

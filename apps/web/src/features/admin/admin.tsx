@@ -1,25 +1,23 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@ticketflow/api-client";
 import { useAuth, type User } from "@/features/auth/auth-provider";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
 import { Button } from "@/components/ui/button";
 
 type Category = components["schemas"]["AdminCategoryView"];
 type AdminUser = components["schemas"]["AdminUserView"];
 type CategoryRequest = components["schemas"]["CategoryRequest"];
 type RoleRequest = components["schemas"]["ChangeRoleRequest"];
-const categorySchema = z.object({
-  name: z.string().trim().min(1, "Enter a name.").max(100),
-  slug: z.string().trim().min(1, "Enter a slug.").max(100),
-});
-type CategoryFields = z.infer<typeof categorySchema>;
-
 export function Admin() {
+  const t = useTranslations("Admin");
+  const errorMessage = useErrorMessage();
   const { user } = useAuth();
   const client = useQueryClient();
   const principal = user?.id;
@@ -44,21 +42,21 @@ export function Admin() {
   if (!enabled)
     return (
       <section>
-        <h1>Administration</h1>
-        <p role="alert">Administrator access required.</p>
+        <h1>{t("title")}</h1>
+        <p role="alert">{t("access")}</p>
       </section>
     );
   return (
     <section>
       <div className="page-heading">
         <div>
-          <p className="page-eyebrow">WORKSPACE SETTINGS</p>
-          <h1>Administration</h1>
-          <p>Manage ticket categories and account roles.</p>
+          <p className="page-eyebrow">{t("eyebrow")}</p>
+          <h1>{t("title")}</h1>
+          <p>{t("description")}</p>
         </div>
       </div>
       <section className="card admin-section">
-        <h2>Categories</h2>
+        <h2>{t("categories")}</h2>
         <CategoryForm
           key="new"
           options={options}
@@ -68,14 +66,16 @@ export function Admin() {
             })
           }
         />
-        {categories.isPending && <p role="status">Loading categories…</p>}
+        {categories.isPending && <p role="status">{t("loadingCategories")}</p>}
         {categories.isError && (
           <div role="alert">
             {errorMessage(categories.error)}{" "}
-            <Button onClick={() => void categories.refetch()}>Try again</Button>
+            <Button onClick={() => void categories.refetch()}>
+              {t("retry")}
+            </Button>
           </div>
         )}
-        {categories.data?.length === 0 && <p>No categories yet.</p>}
+        {categories.data?.length === 0 && <p>{t("emptyCategories")}</p>}
         {categories.data?.map((category) => (
           <CategoryForm
             key={category.id}
@@ -90,15 +90,15 @@ export function Admin() {
         ))}
       </section>
       <section className="card admin-section">
-        <h2>Users and roles</h2>
-        {users.isPending && <p role="status">Loading users…</p>}
+        <h2>{t("users")}</h2>
+        {users.isPending && <p role="status">{t("loadingUsers")}</p>}
         {users.isError && (
           <div role="alert">
             {errorMessage(users.error)}{" "}
-            <Button onClick={() => void users.refetch()}>Try again</Button>
+            <Button onClick={() => void users.refetch()}>{t("retry")}</Button>
           </div>
         )}
-        {users.data?.length === 0 && <p>No users found.</p>}
+        {users.data?.length === 0 && <p>{t("emptyUsers")}</p>}
         {users.data?.map((account) => (
           <UserRole
             key={account.id}
@@ -126,6 +126,13 @@ function CategoryForm({
   options: Options;
   onSaved: () => void;
 }) {
+  const t = useTranslations("Admin");
+  const errorMessage = useErrorMessage();
+  const categorySchema = z.object({
+    name: z.string().trim().min(1, t("nameRequired")).max(100),
+    slug: z.string().trim().min(1, t("slugRequired")).max(100),
+  });
+  type CategoryFields = z.infer<typeof categorySchema>;
   const {
     register,
     handleSubmit,
@@ -151,7 +158,7 @@ function CategoryForm({
         name: category ? value.name : "",
         slug: category ? value.slug : "",
       });
-      setNotice(category ? "Category saved." : "Category created.");
+      setNotice(category ? t("categorySaved") : t("categoryCreated"));
       onSaved();
     },
   });
@@ -166,7 +173,7 @@ function CategoryForm({
     >
       <div className="form-field">
         <label htmlFor={`name-${prefix}`}>
-          {category ? `Name for ${category.name}` : "New category name"}
+          {category ? `${t("nameFor")} ${category.name}` : t("newName")}
         </label>
         <input
           id={`name-${prefix}`}
@@ -181,7 +188,7 @@ function CategoryForm({
       </div>
       <div className="form-field">
         <label htmlFor={`slug-${prefix}`}>
-          {category ? `Slug for ${category.name}` : "New category slug"}
+          {category ? `${t("slugFor")} ${category.name}` : t("newSlug")}
         </label>
         <input
           id={`slug-${prefix}`}
@@ -195,7 +202,7 @@ function CategoryForm({
         )}
       </div>
       <Button disabled={mutation.isPending}>
-        {category ? "Save category" : "Create category"}
+        {category ? t("saveCategory") : t("createCategory")}
       </Button>
       {mutation.isError && (
         <p role="alert" className="field-error">
@@ -217,6 +224,8 @@ function UserRole({
   options: Options;
   onSaved: () => void;
 }) {
+  const t = useTranslations("Admin");
+  const errorMessage = useErrorMessage();
   const [role, setRole] = useState(account.role);
   const [notice, setNotice] = useState("");
   const mutation = useMutation({
@@ -227,7 +236,7 @@ function UserRole({
         body: JSON.stringify(input),
       }),
     onSuccess: () => {
-      setNotice("Role updated.");
+      setNotice(t("roleUpdated"));
       onSaved();
     },
   });
@@ -244,16 +253,18 @@ function UserRole({
           mutation.mutate({ role });
         }}
       >
-        <label htmlFor={`role-${account.id}`}>Role for {account.name}</label>
+        <label htmlFor={`role-${account.id}`}>
+          {t("roleFor")} {account.name}
+        </label>
         <select
           id={`role-${account.id}`}
           value={role}
           onChange={(event) => setRole(event.target.value)}
           disabled={account.id === currentId}
         >
-          <option value="Customer">Customer</option>
-          <option value="Agent">Agent</option>
-          <option value="Admin">Admin</option>
+          <option value="Customer">{t("customer")}</option>
+          <option value="Agent">{t("agent")}</option>
+          <option value="Admin">{t("admin")}</option>
         </select>
         <Button
           disabled={
@@ -262,11 +273,9 @@ function UserRole({
             mutation.isPending
           }
         >
-          Save role
+          {t("saveRole")}
         </Button>
-        {account.id === currentId && (
-          <small>You cannot change your own role.</small>
-        )}
+        {account.id === currentId && <small>{t("selfRole")}</small>}
         {mutation.isError && (
           <span role="alert" className="field-error">
             {errorMessage(mutation.error)}

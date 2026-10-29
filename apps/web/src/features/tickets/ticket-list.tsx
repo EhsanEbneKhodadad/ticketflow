@@ -1,21 +1,26 @@
 "use client";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, Inbox, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
-import { errorMessage } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
 import {
   ticketsApi,
-  statusLabels,
-  priorityLabels,
+  ticketStatuses,
+  ticketPriorities,
   initials,
   dateLabel,
-  type Status,
 } from "./api";
 
 export function TicketList({ view = "all" }: { view?: string }) {
+  const locale = useLocale();
+  const t = useTranslations("Tickets");
+  const errorMessage = useErrorMessage();
+  const statusText = useTranslations("TicketStatus");
+  const priorityText = useTranslations("Priority");
   const { user } = useAuth();
   const staff = user?.role !== "Customer";
   const [status, setStatus] = useState("");
@@ -39,45 +44,37 @@ export function TicketList({ view = "all" }: { view?: string }) {
   });
   const total = Number(query.data?.total ?? 0);
   const title = !staff
-    ? "Your tickets"
+    ? t("ownTitle")
     : view === "mine"
-      ? "Assigned to you"
+      ? t("assignedTitle")
       : view === "unassigned"
-        ? "Unassigned tickets"
-        : "Support inbox";
+        ? t("unassignedTitle")
+        : t("inboxTitle");
   const tabs: { value: string; label: string }[] = [
-    { value: "", label: "All tickets" },
-    { value: "open", label: "Open" },
-    { value: "inProgress", label: "In progress" },
-    { value: "resolved", label: "Resolved" },
+    { value: "", label: t("allStatuses") },
+    { value: "open", label: statusText("open") },
+    { value: "inProgress", label: statusText("inProgress") },
+    { value: "resolved", label: statusText("resolved") },
   ];
   return (
     <section>
       <div className="page-heading">
         <div>
           <div className="page-eyebrow">
-            {staff ? "EVERY CONVERSATION, IN ONE PLACE" : "WE'RE HERE TO HELP"}
+            {staff ? t("staffEyebrow") : t("customerEyebrow")}
           </div>
           <h1>{title}</h1>
-          <p>
-            {staff
-              ? "Pick up a request. Start a conversation. Make someone's day a little easier."
-              : "Follow your requests and keep the conversation moving."}
-          </p>
+          <p>{staff ? t("staffDescription") : t("customerDescription")}</p>
         </div>
         <Button asChild>
           <Link href="/tickets/new">
             <Plus size={15} />
-            New ticket
+            {t("newTicket")}
           </Link>
         </Button>
       </div>
       <div className="card">
-        <div
-          className="inbox-tabs"
-          role="group"
-          aria-label="Ticket status filters"
-        >
+        <div className="inbox-tabs" role="group" aria-label={t("filterGroup")}>
           {tabs.map((tab) => (
             <button
               key={tab.value}
@@ -105,45 +102,45 @@ export function TicketList({ view = "all" }: { view?: string }) {
           >
             <Search size={15} />
             <input
-              aria-label="Search tickets"
-              placeholder="Search by title or ticket number…"
+              aria-label={t("searchLabel")}
+              placeholder={t("searchPlaceholder")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
             />
             <Button size="small" variant="outline" type="submit">
-              Search
+              {t("searchButton")}
             </Button>
           </form>
           <div className="toolbar-filters">
             <select
               className="filter-control"
-              aria-label="Filter status"
+              aria-label={t("filterStatus")}
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value);
                 setPage(1);
               }}
             >
-              <option value="">All statuses</option>
-              {Object.entries(statusLabels).map(([key, label]) => (
+              <option value="">{t("allStatuses")}</option>
+              {ticketStatuses.map((key) => (
                 <option key={key} value={key}>
-                  {label}
+                  {statusText(key)}
                 </option>
               ))}
             </select>
             <select
               className="filter-control"
-              aria-label="Filter priority"
+              aria-label={t("filterPriority")}
               value={priority}
               onChange={(e) => {
                 setPriority(e.target.value);
                 setPage(1);
               }}
             >
-              <option value="">All priorities</option>
-              {Object.entries(priorityLabels).map(([key, label]) => (
+              <option value="">{t("allPriorities")}</option>
+              {ticketPriorities.map((key) => (
                 <option key={key} value={key}>
-                  {label}
+                  {priorityText(key)}
                 </option>
               ))}
             </select>
@@ -152,14 +149,14 @@ export function TicketList({ view = "all" }: { view?: string }) {
         {query.isPending ? (
           <div className="page-state" role="status">
             <span className="spinner" />
-            Loading tickets…
+            {t("loading")}
           </div>
         ) : query.error ? (
           <div className="page-state" role="alert">
-            <h2>Tickets could not be loaded.</h2>
+            <h2>{t("loadError")}</h2>
             <p>{errorMessage(query.error)}</p>
             <Button variant="outline" onClick={() => void query.refetch()}>
-              Try again
+              {t("retry")}
             </Button>
           </div>
         ) : !query.data?.items.length ? (
@@ -167,16 +164,14 @@ export function TicketList({ view = "all" }: { view?: string }) {
             <Inbox size={32} strokeWidth={1} />
             <h2>
               {search || status || priority || view !== "all"
-                ? "No tickets match this view."
-                : "A fresh start for your support."}
+                ? t("noMatches")
+                : t("noTickets")}
             </h2>
             <p>
-              {search || status || priority
-                ? "Try another search or adjust the filters."
-                : "Create a ticket when you need a hand. We'll keep every update here."}
+              {search || status || priority ? t("tryFilters") : t("startHint")}
             </p>
             <Button asChild variant="outline">
-              <Link href="/tickets/new">Create a ticket</Link>
+              <Link href="/tickets/new">{t("create")}</Link>
             </Button>
           </div>
         ) : (
@@ -185,14 +180,14 @@ export function TicketList({ view = "all" }: { view?: string }) {
               <caption className="sr-only">{title}</caption>
               <thead>
                 <tr>
-                  <th scope="col">TICKET</th>
-                  <th scope="col">STATUS</th>
-                  <th scope="col">PRIORITY</th>
+                  <th scope="col">{t("tableTicket")}</th>
+                  <th scope="col">{t("tableStatus")}</th>
+                  <th scope="col">{t("tablePriority")}</th>
                   <th scope="col" className="column-assignee">
-                    ASSIGNEE
+                    {t("tableAssignee")}
                   </th>
                   <th scope="col" className="column-date">
-                    OPENED
+                    {t("tableOpened")}
                   </th>
                 </tr>
               </thead>
@@ -216,14 +211,14 @@ export function TicketList({ view = "all" }: { view?: string }) {
                     </td>
                     <td>
                       <span className={"status-badge status-" + ticket.status}>
-                        {statusLabels[ticket.status as Status]}
+                        {statusText(ticket.status)}
                       </span>
                     </td>
                     <td>
                       <span
                         className={"priority-badge priority-" + ticket.priority}
                       >
-                        {priorityLabels[ticket.priority]}
+                        {priorityText(ticket.priority)}
                       </span>
                     </td>
                     <td className="column-assignee">
@@ -235,11 +230,11 @@ export function TicketList({ view = "all" }: { view?: string }) {
                           {ticket.agentName}
                         </div>
                       ) : (
-                        <span className="unassigned">Unassigned</span>
+                        <span className="unassigned">{t("unassigned")}</span>
                       )}
                     </td>
                     <td className="column-date">
-                      {dateLabel(ticket.createdAt)}
+                      {dateLabel(ticket.createdAt, locale)}
                     </td>
                   </tr>
                 ))}
@@ -249,14 +244,20 @@ export function TicketList({ view = "all" }: { view?: string }) {
         )}
         <div className="inbox-footer">
           <span>
-            {total} matching {total === 1 ? "ticket" : "tickets"}
-            {total > 0 ? " · Page " + page : ""}
+            {new Intl.NumberFormat(locale).format(total)} {t("matching")}{" "}
+            {total === 1 ? t("ticket") : t("tickets")}
+            {total > 0
+              ? " · " +
+                t("page") +
+                " " +
+                new Intl.NumberFormat(locale).format(page)
+              : ""}
           </span>
           <div className="pagination">
             <Button
               size="small"
               variant="outline"
-              aria-label="Previous page"
+              aria-label={t("previous")}
               disabled={page === 1 || query.isFetching}
               onClick={() => setPage((p) => p - 1)}
             >
@@ -265,7 +266,7 @@ export function TicketList({ view = "all" }: { view?: string }) {
             <Button
               size="small"
               variant="outline"
-              aria-label="Next page"
+              aria-label={t("next")}
               disabled={page * 10 >= total || query.isFetching}
               onClick={() => setPage((p) => p + 1)}
             >
