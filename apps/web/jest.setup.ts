@@ -47,3 +47,7 @@ jest.mock("next-intl/navigation", () => {
     }),
   };
 });
+
+jest.mock("next-intl/routing", () => ({
+  defineRouting: (config: unknown) => config,
+}));
