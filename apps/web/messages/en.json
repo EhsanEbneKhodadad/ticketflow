@@ -407,7 +407,10 @@
     "rateLimited": "Too many attempts. Please wait and try again.",
     "unavailable": "The service is temporarily unavailable. Please try again later.",
     "serverError": "A server error occurred. Please try again later.",
-    "accountChanged": "Your account changed in another tab. Please reload your workspace and try again."
+    "accountChanged": "Your account changed in another tab. Please reload your workspace and try again.",
+    "invalidCredentials": "Invalid email or password.",
+    "ticketChanged": "This ticket changed.",
+    "dashboardUnavailable": "Dashboard unavailable"
   },
   "Metadata": {
     "title": "TicketFlow | Support workspace",

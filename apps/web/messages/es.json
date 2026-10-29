@@ -407,7 +407,10 @@
     "rateLimited": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
     "unavailable": "El servicio no está disponible temporalmente. Inténtalo más tarde.",
     "serverError": "Se produjo un error del servidor. Inténtalo más tarde.",
-    "accountChanged": "Tu cuenta cambió en otra pestaña. Recarga tu espacio de trabajo e inténtalo de nuevo."
+    "accountChanged": "Tu cuenta cambió en otra pestaña. Recarga tu espacio de trabajo e inténtalo de nuevo.",
+    "invalidCredentials": "Correo electrónico o contraseña no válidos.",
+    "ticketChanged": "Este ticket ha cambiado.",
+    "dashboardUnavailable": "El panel no está disponible."
   },
   "Metadata": {
     "title": "TicketFlow | Espacio de soporte",

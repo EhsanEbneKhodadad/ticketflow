@@ -15,11 +15,20 @@ type ErrorKey =
   | "rateLimited"
   | "unavailable"
   | "serverError"
-  | "accountChanged";
+  | "accountChanged"
+  | "invalidCredentials"
+  | "ticketChanged"
+  | "dashboardUnavailable";
 
 function errorKey(error: unknown): ErrorKey {
   if (!(error instanceof ApiError)) return "requestFailed";
   if (error.status === 0) return "accountChanged";
+  if (error.status === 401 && /invalid email or password/i.test(error.message))
+    return "invalidCredentials";
+  if (error.status === 409 && /this ticket changed/i.test(error.message))
+    return "ticketChanged";
+  if (error.status === 503 && /dashboard unavailable/i.test(error.message))
+    return "dashboardUnavailable";
   if (error.status === 400) return "badRequest";
   if (error.status === 401) return "unauthorized";
   if (error.status === 403) return "forbidden";
