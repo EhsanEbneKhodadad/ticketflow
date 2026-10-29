@@ -11,6 +11,8 @@ import {
   LogOut,
   Menu,
   Search,
+  LayoutDashboard,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api";
@@ -78,6 +80,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         <nav className="workspace-nav" aria-label="Workspace navigation">
           <p className="nav-label">WORKSPACE</p>
           <Link
+            href="/dashboard"
+            className={pathname === "/dashboard" ? "active" : ""}
+            onClick={() => setOpen(false)}
+          >
+            <LayoutDashboard size={16} />
+            Dashboard
+          </Link>
+          <Link
             href="/tickets"
             className={pathname === "/tickets" ? "active" : ""}
             onClick={() => setOpen(false)}
@@ -116,6 +126,16 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 Unassigned
               </Link>
             </>
+          )}
+          {user.role === "Admin" && (
+            <Link
+              href="/admin"
+              className={pathname === "/admin" ? "active" : ""}
+              onClick={() => setOpen(false)}
+            >
+              <Settings size={16} />
+              Administration
+            </Link>
           )}
           <p className="nav-label">RESOURCES</p>
           <Link href="/" onClick={() => setOpen(false)}>
