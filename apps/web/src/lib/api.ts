@@ -50,8 +50,12 @@ async function perform(path: string, options: Options = {}) {
   assertCurrent(options);
   const method = (options.method ?? "GET").toUpperCase();
   const headers = { ...options.headers } as Record<string, string>;
-  if (options.expectedPrincipalId)
+  if (options.expectedPrincipalId) {
+    for (const name of Object.keys(headers)) {
+      if (name.toLowerCase() === "x-ticketflow-user") delete headers[name];
+    }
     headers["X-TicketFlow-User"] = options.expectedPrincipalId;
+  }
   if (
     options.body &&
     !headers["Content-Type"] &&
