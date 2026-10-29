@@ -38,19 +38,14 @@ export const ticketsApi = {
       body: JSON.stringify(input),
     }),
 };
-export const statusLabels: Record<Status, string> = {
-  open: "Open",
-  inProgress: "In progress",
-  waitingForCustomer: "Waiting for customer",
-  resolved: "Resolved",
-  closed: "Closed",
-};
-export const priorityLabels: Record<Priority, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  urgent: "Urgent",
-};
+export const ticketStatuses: Status[] = [
+  "open",
+  "inProgress",
+  "waitingForCustomer",
+  "resolved",
+  "closed",
+];
+export const ticketPriorities: Priority[] = ["low", "medium", "high", "urgent"];
 export function initials(name: string) {
   return name
     .split(" ")
@@ -60,14 +55,14 @@ export function initials(name: string) {
     .join("")
     .toUpperCase();
 }
-export function dateLabel(value: string) {
-  return new Intl.DateTimeFormat("en", {
+export function dateLabel(value: string, locale = "en") {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
 }
-export function timeLabel(value: string) {
-  return new Intl.DateTimeFormat("en", {
+export function timeLabel(value: string, locale = "en") {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "numeric",

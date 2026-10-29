@@ -2,7 +2,10 @@
 import { renderToString } from "react-dom/server";
 import { AppProviders } from "@/components/providers";
 import { AuthScreen } from "./auth-screen";
-jest.mock("next/navigation", () => ({
+jest.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
 }));
 it("prevents unhydrated authentication forms from sending credentials in a GET URL", () => {

@@ -1,10 +1,12 @@
 "use client";
 import { useId, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Paperclip, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/features/auth/auth-provider";
-import { ApiError, errorMessage } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
 import { attachmentsApi } from "./api";
 
 type Props = {
@@ -25,6 +27,9 @@ export function AttachmentPanel({
   messageId,
   internal = false,
 }: Props) {
+  const locale = useLocale();
+  const t = useTranslations("Attachments");
+  const errorMessage = useErrorMessage();
   const client = useQueryClient();
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -54,15 +59,15 @@ export function AttachmentPanel({
     setNotice("");
     setError("");
     if (!selected) {
-      setError("Choose a file first.");
+      setError(t("chooseFirst"));
       return;
     }
     if (!selected.size || selected.size > 10485760) {
-      setError("Choose a nonempty file no larger than 10 MiB.");
+      setError(t("sizeError"));
       return;
     }
     if (!/\.(pdf|png|jpe?g|txt)$/i.test(selected.name)) {
-      setError("Choose a PDF, PNG, JPEG or UTF-8 text (.txt) file.");
+      setError(t("typeError"));
       return;
     }
     // Capture the file, principal and version once; a conflict never retries itself.
@@ -82,15 +87,12 @@ export function AttachmentPanel({
       refresh();
       setSelected(null);
       if (input.current) input.current.value = "";
-      setNotice("File uploaded.");
+      setNotice(t("uploaded"));
     } catch (failure) {
       if (!isCurrent()) return;
       if (failure instanceof ApiError && failure.status === 409) {
         refresh();
-        setError(
-          errorMessage(failure) +
-            " Your selected file is preserved. Review the updated ticket before uploading again.",
-        );
+        setError(errorMessage(failure) + " " + t("conflict"));
       } else setError(errorMessage(failure));
     } finally {
       if (isCurrent()) setUploading(false);
@@ -132,33 +134,31 @@ export function AttachmentPanel({
   return (
     <section
       className={"attachment-panel" + (messageId ? " reply-attachments" : "")}
-      aria-label={messageId ? "Reply attachments" : "Ticket attachments"}
+      aria-label={messageId ? t("replyAria") : t("ticketAria")}
     >
       <h3>
         <Paperclip size={14} />
-        {messageId ? "Reply files" : "Attachments"}
-        {internal && <LockKeyhole size={12} aria-label="Team only" />}
+        {messageId ? t("reply") : t("ticket")}
+        {internal && <LockKeyhole size={12} aria-label={t("teamOnly")} />}
       </h3>
       <p className="field-hint">
-        {internal
-          ? "Team only. These files follow this internal note’s visibility."
-          : "Visible to the customer and support team."}
+        {internal ? t("internalHint") : t("publicHint")}
       </p>
       {query.isPending ? (
-        <p role="status">Loading files…</p>
+        <p role="status">{t("loading")}</p>
       ) : query.error ? (
         <div role="alert" className="error-box">
           <p>
             {query.error instanceof ApiError && query.error.status === 404
-              ? "Files are not available to your account."
-              : "Files could not be loaded. " + errorMessage(query.error)}
+              ? t("notAvailable")
+              : t("loadError") + " " + errorMessage(query.error)}
           </p>
           <Button
             size="small"
             variant="outline"
             onClick={() => void query.refetch()}
           >
-            Retry files
+            {t("retry")}
           </Button>
         </div>
       ) : files.length ? (
@@ -169,7 +169,7 @@ export function AttachmentPanel({
                 {file.fileName}
                 <small>
                   {Number(file.size) < 1024
-                    ? `${file.size} bytes`
+                    ? `${new Intl.NumberFormat(locale).format(Number(file.size))} ${t("bytes")}`
                     : Number(file.size) < 1048576
                       ? `${(Number(file.size) / 1024).toFixed(1)} KiB`
                       : `${(Number(file.size) / 1048576).toFixed(1)} MiB`}{" "}
@@ -179,18 +179,18 @@ export function AttachmentPanel({
               <Button
                 size="small"
                 variant="outline"
-                aria-label={"Download " + file.fileName}
+                aria-label={t("download") + " " + file.fileName}
                 disabled={downloading !== null}
                 onClick={() => void download(file.id)}
               >
                 <Download size={12} />
-                {downloading === file.id ? "Saving…" : "Download"}
+                {downloading === file.id ? t("saving") : t("download")}
               </Button>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="field-hint">No files attached here yet.</p>
+        <p className="field-hint">{t("empty")}</p>
       )}
       <form
         onSubmit={(event) => {
@@ -200,7 +200,7 @@ export function AttachmentPanel({
         className="attachment-upload"
       >
         <label htmlFor={id}>
-          {messageId ? "Choose reply file" : "Choose ticket file"}
+          {messageId ? t("chooseReply") : t("chooseTicket")}
         </label>
         <input
           ref={input}
@@ -216,17 +216,14 @@ export function AttachmentPanel({
           aria-describedby={id + "-limits"}
         />
         <p id={id + "-limits"} className="field-hint">
-          PDF, PNG, JPEG or UTF-8 text · 10 MiB per file · Up to 10 files across
-          this ticket. File content is checked on upload.
+          {t("limits")}
         </p>
         {selected && (
-          <p className="attachment-selection">Selected: {selected.name}</p>
-        )}
-        {closed && (
-          <p className="field-hint">
-            This ticket is closed. Reopen it to upload files.
+          <p className="attachment-selection">
+            {t("selected")} {selected.name}
           </p>
         )}
+        {closed && <p className="field-hint">{t("closedHint")}</p>}
         {error && (
           <p role="alert" className="error-box">
             {error}
@@ -243,7 +240,7 @@ export function AttachmentPanel({
           type="submit"
           disabled={closed || uploading}
         >
-          {uploading ? "Uploading…" : "Upload file"}
+          {uploading ? t("uploading") : t("upload")}
         </Button>
       </form>
     </section>

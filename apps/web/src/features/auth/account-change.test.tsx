@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from "./auth-provider";
 import { AuthScreen } from "./auth-screen";
 import { api } from "@/lib/api";
 const mockReplace = jest.fn();
-jest.mock("next/navigation", () => ({
+jest.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ replace: mockReplace, push: jest.fn() }),
 }));
 

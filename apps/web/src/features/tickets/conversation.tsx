@@ -1,11 +1,13 @@
 "use client";
 import { useState, type ReactNode } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole, Send, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/features/auth/auth-provider";
-import { ApiError, errorMessage } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
 import { ticketsApi, initials, timeLabel, type Ticket } from "./api";
 
 export function Conversation({
@@ -17,6 +19,9 @@ export function Conversation({
   staff: boolean;
   renderAttachments?: (message: Ticket["messages"][number]) => ReactNode;
 }) {
+  const locale = useLocale();
+  const t = useTranslations("Tickets");
+  const errorMessage = useErrorMessage();
   const client = useQueryClient();
   const [internal, setInternal] = useState(false);
   const [notice, setNotice] = useState("");
@@ -40,7 +45,7 @@ export function Conversation({
       client.setQueryData(["ticket", ticket.id, context?.principal], updated);
       void client.invalidateQueries({ queryKey: ["tickets"] });
       reset({ body: "" });
-      setNotice(internal ? "Internal note added." : "Reply sent.");
+      setNotice(internal ? t("internalAdded") : t("replySent"));
     },
     onError: (error) => {
       setNotice("");
@@ -55,7 +60,10 @@ export function Conversation({
     <section className="card" aria-labelledby="conversation-title">
       <div className="detail-card-heading">
         <h2 id="conversation-title">
-          Conversation <span className="count-pill">{messages.length}</span>
+          {t("conversation")}{" "}
+          <span className="count-pill">
+            {new Intl.NumberFormat(locale).format(messages.length)}
+          </span>
         </h2>
         <MessageSquare size={14} color="#9aac87" />
       </div>
@@ -72,7 +80,7 @@ export function Conversation({
               {message.internal && (
                 <div className="internal-note-label">
                   <LockKeyhole size={12} />
-                  Internal note · Team only
+                  {t("teamOnly")}
                 </div>
               )}
               <div className="message-top">
@@ -81,12 +89,12 @@ export function Conversation({
                   <strong>{message.authorName}</strong>
                   <small>
                     {message.authorRole === "Customer"
-                      ? "Customer"
-                      : "Support team"}
+                      ? t("customerRole")
+                      : t("supportTeam")}
                   </small>
                 </div>
                 <time dateTime={message.createdAt}>
-                  {timeLabel(message.createdAt)}
+                  {timeLabel(message.createdAt, locale)}
                 </time>
               </div>
               <p className="message-body">{message.body}</p>
@@ -96,7 +104,7 @@ export function Conversation({
         </div>
       ) : (
         <div className="page-state" style={{ padding: "32px 22px" }}>
-          <p>No replies yet. Add a message to keep the conversation moving.</p>
+          <p>{t("noReplies")}</p>
         </div>
       )}
       <form
@@ -105,11 +113,7 @@ export function Conversation({
         noValidate
       >
         {staff && (
-          <div
-            className="reply-tabs"
-            role="group"
-            aria-label="Reply visibility"
-          >
+          <div className="reply-tabs" role="group" aria-label={t("visibility")}>
             <button
               type="button"
               aria-pressed={!internal}
@@ -119,7 +123,7 @@ export function Conversation({
                 setNotice("");
               }}
             >
-              Public reply
+              {t("publicReply")}
             </button>
             <button
               type="button"
@@ -130,32 +134,29 @@ export function Conversation({
                 setNotice("");
               }}
             >
-              Internal note
+              {t("internalNote")}
             </button>
           </div>
         )}
         {ticket.status === "closed" && (
           <p className="field-hint" style={{ marginBottom: 15 }}>
-            This ticket is closed. Reopen it to continue the conversation.
+            {t("closedHint")}
           </p>
         )}
         <div className="form-field">
-          <label htmlFor="reply-body">Message</label>
+          <label htmlFor="reply-body">{t("message")}</label>
           <textarea
             id="reply-body"
             rows={4}
             disabled={ticket.status === "closed"}
             placeholder={
-              internal
-                ? "Share context with your support team…"
-                : "Add your reply to the conversation…"
+              internal ? t("internalPlaceholder") : t("replyPlaceholder")
             }
             {...register("body", {
-              validate: (value) =>
-                value.trim().length > 0 || "Write a message before sending.",
+              validate: (value) => value.trim().length > 0 || t("writeMessage"),
               maxLength: {
                 value: 10000,
-                message: "Keep your message under 10,000 characters.",
+                message: t("messageMax"),
               },
             })}
             aria-invalid={!!errors.body}
@@ -172,7 +173,7 @@ export function Conversation({
             {errorMessage(mutation.error)}
             {mutation.error instanceof ApiError &&
               mutation.error.status === 409 &&
-              " Your draft is preserved."}
+              " " + t("draftPreserved")}
           </div>
         )}
         {notice && (
@@ -181,20 +182,16 @@ export function Conversation({
           </p>
         )}
         <div className="reply-bottom">
-          <span>
-            {internal
-              ? "Only agents and administrators can see this note."
-              : "Your reply is visible to the customer and support team."}
-          </span>
+          <span>{internal ? t("internalAudience") : t("publicAudience")}</span>
           <Button
             type="submit"
             disabled={mutation.isPending || ticket.status === "closed"}
           >
             {mutation.isPending
-              ? "Sending…"
+              ? t("sending")
               : internal
-                ? "Add internal note"
-                : "Send reply"}
+                ? t("addInternal")
+                : t("sendReply")}
             <Send size={13} />
           </Button>
         </div>

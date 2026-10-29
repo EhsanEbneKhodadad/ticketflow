@@ -7,9 +7,10 @@ import {
   type ReactNode,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import type { components } from "@ticketflow/api-client";
 import { api, ApiError } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 export type User = components["schemas"]["UserView"];
 type Login = components["schemas"]["LoginRequest"];
@@ -28,6 +29,7 @@ type AuthContextValue = {
 const Context = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const errors = useTranslations("Errors");
   const client = useQueryClient();
   const router = useRouter();
   const [sessionNotice, setSessionNotice] = useState("");
@@ -66,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSessionNotice(
         (event as CustomEvent<{ code?: string }>).detail?.code ===
           "account_changed"
-          ? "Your account changed in another tab. Sign in to this workspace again."
+          ? errors("accountChanged")
           : "",
       );
       client.clear();
@@ -76,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener("ticketflow:session-expired", expired);
     return () =>
       window.removeEventListener("ticketflow:session-expired", expired);
-  }, [client, router]);
+  }, [client, errors, router]);
 
   async function authenticate(path: string, input: Login | Registration) {
     const user = await api<User>(path, {

@@ -1,7 +1,7 @@
 "use client";
-import Link from "next/link";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import {
   Inbox,
   Plus,
@@ -15,11 +15,15 @@ import {
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { errorMessage } from "@/lib/api";
+import { useErrorMessage } from "@/lib/use-error-message";
 import { initials } from "@/features/tickets/api";
 import { useAuth } from "./auth-provider";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
+  const t = useTranslations("Workspace");
+  const errorMessage = useErrorMessage();
+  const common = useTranslations("Dashboard");
   const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -39,9 +43,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     return (
       <div className="loading-screen">
         <div className="page-state">
-          <h2>We could not reach your workspace.</h2>
+          <h2>{t("supportWorkspace")}</h2>
           <p>{errorMessage(auth.error)}</p>
-          <Button onClick={auth.retry}>Try again</Button>
+          <Button onClick={auth.retry}>{common("retry")}</Button>
         </div>
       </div>
     );
@@ -49,7 +53,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     return (
       <div className="loading-screen" role="status">
         <span className="spinner" />
-        Opening your workspace…
+        {t("opening")}
       </div>
     );
   const user = auth.user;
@@ -57,18 +61,18 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   return (
     <div className="workspace-root">
       <a className="skip-link" href="#workspace-main">
-        Skip to content
+        {t("skip")}
       </a>
       {open && (
         <button
           className="sidebar-scrim"
-          aria-label="Close navigation"
+          aria-label={t("closeNavigation")}
           onClick={() => setOpen(false)}
         />
       )}
       <aside
         className={"workspace-sidebar" + (open ? " nav-open" : "")}
-        aria-label="Workspace sidebar"
+        aria-label={t("sidebar")}
       >
         <Link
           className="workspace-brand"
@@ -77,15 +81,15 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         >
           <span className="brand-mark">t</span>TicketFlow
         </Link>
-        <nav className="workspace-nav" aria-label="Workspace navigation">
-          <p className="nav-label">WORKSPACE</p>
+        <nav className="workspace-nav" aria-label={t("navigation")}>
+          <p className="nav-label">{t("workspace")}</p>
           <Link
             href="/dashboard"
             className={pathname === "/dashboard" ? "active" : ""}
             onClick={() => setOpen(false)}
           >
             <LayoutDashboard size={16} />
-            Dashboard
+            {t("dashboard")}
           </Link>
           <Link
             href="/tickets"
@@ -93,7 +97,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             onClick={() => setOpen(false)}
           >
             <Inbox size={16} />
-            {staff ? "All tickets" : "Your tickets"}
+            {staff ? t("allTickets") : t("yourTickets")}
           </Link>
           <Link
             href="/tickets/new"
@@ -101,7 +105,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             onClick={() => setOpen(false)}
           >
             <Plus size={16} />
-            New ticket
+            {t("newTicket")}
           </Link>
           <Link
             href="/search"
@@ -109,21 +113,21 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             onClick={() => setOpen(false)}
           >
             <Search size={16} />
-            Search tickets
+            {t("searchTickets")}
           </Link>
           {staff && (
             <>
-              <p className="nav-label">YOUR QUEUES</p>
+              <p className="nav-label">{t("yourQueues")}</p>
               <Link href="/tickets?view=mine" onClick={() => setOpen(false)}>
                 <UserRound size={16} />
-                Assigned to me
+                {t("assigned")}
               </Link>
               <Link
                 href="/tickets?view=unassigned"
                 onClick={() => setOpen(false)}
               >
                 <CircleDashed size={16} />
-                Unassigned
+                {t("unassigned")}
               </Link>
             </>
           )}
@@ -134,19 +138,18 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               onClick={() => setOpen(false)}
             >
               <Settings size={16} />
-              Administration
+              {t("administration")}
             </Link>
           )}
-          <p className="nav-label">RESOURCES</p>
+          <p className="nav-label">{t("resources")}</p>
           <Link href="/" onClick={() => setOpen(false)}>
             <LifeBuoy size={16} />
-            About TicketFlow
+            {t("about")}
           </Link>
         </nav>
         <div className="nav-spacer" />
         <div className="sidebar-note">
-          <strong>A little clarity goes a long way.</strong>Keep every question,
-          reply, and next step in one place.
+          <strong>{t("noteTitle")}</strong> {t("note")}
         </div>
         <div className="sidebar-account">
           <span className="avatar">{initials(user.name)}</span>
@@ -154,10 +157,10 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             <strong>{user.name}</strong>
             <small>
               {user.role === "Admin"
-                ? "Administrator"
+                ? t("administrator")
                 : user.role === "Agent"
-                  ? "Support agent"
-                  : "Customer"}
+                  ? t("agent")
+                  : t("customer")}
             </small>
           </div>
         </div>
@@ -174,14 +177,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           }}
         >
           <LogOut size={14} />
-          Sign out
+          {t("signOut")}
         </button>
       </aside>
       <header className="workspace-header">
         <div className="workspace-breadcrumb">
           <button
             className="mobile-menu-button"
-            aria-label="Open navigation"
+            aria-label={t("openNavigation")}
             aria-expanded={open}
             onClick={() => setOpen(true)}
           >
@@ -189,12 +192,17 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           </button>
           <span>TicketFlow</span>
           <span>/</span>
-          <strong>{staff ? "Support workspace" : "Your workspace"}</strong>
+          <strong>{staff ? t("supportWorkspace") : t("yourWorkspace")}</strong>
         </div>
         <span className="role-pill">
           <span className="flow-dot" />
-          {user.role === "Admin" ? "Administrator" : user.role}
+          {user.role === "Admin"
+            ? t("administrator")
+            : user.role === "Agent"
+              ? t("agent")
+              : t("customer")}
         </span>
+        <LanguageSwitcher />
       </header>
       <main key={user.id} className="workspace-main" id="workspace-main">
         {children}

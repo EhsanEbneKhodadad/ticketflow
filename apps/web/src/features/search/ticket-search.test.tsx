@@ -9,7 +9,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TicketSearch, SearchSnippet } from "./ticket-search";
 const push = jest.fn();
 let mockRole = "Customer";
-jest.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+jest.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+  usePathname: () => "/search",
+  useRouter: () => ({ push }),
+}));
 jest.mock("@/features/auth/auth-provider", () => ({
   useAuth: () => ({ user: { id: "customer", role: mockRole } }),
 }));
