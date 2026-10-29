@@ -112,3 +112,7 @@ Open `/login` after starting Compose. Development-only demo accounts are `custom
 The UI uses same-origin HttpOnly cookies and antiforgery headers, with no browser-stored tokens. Session refresh coordinates across tabs; private caches and pending mutation responses are scoped to the active account. Ticket edits preserve their original concurrency version so newer work cannot be silently overwritten.
 
 See [API setup](docs/runbooks/milestone-2-api.md), [Milestone 2 scope](docs/milestone-2.md), and [screenshots and verification](docs/milestone-2-verification.md).
+
+## Durable jobs and notifications
+
+See [the jobs runbook](docs/runbooks/milestone-4-jobs.md) for explicit Hangfire bootstrap, reminder and escalation defaults, retries, and failure replay.

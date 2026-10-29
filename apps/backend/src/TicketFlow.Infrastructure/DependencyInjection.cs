@@ -11,6 +11,7 @@ using TicketFlow.Application.Attachments;
 using TicketFlow.Infrastructure.Attachments;
 using TicketFlow.Infrastructure.Identity;
 using TicketFlow.Infrastructure.Persistence;
+using TicketFlow.Infrastructure.Notifications;
 using TicketFlow.Application.Search;
 using TicketFlow.Infrastructure.Search;
 
@@ -52,6 +53,9 @@ public static class DependencyInjection
         services.AddScoped<IAttachmentStorage, S3AttachmentStorage>();
         services.AddScoped<AttachmentWorkflow>();
         services.AddScoped<IDevelopmentSeeder, DevelopmentSeeder>();
+        services.AddScoped<INotificationSender, SmtpNotificationSender>();
+        services.AddScoped<OutboxProcessor>();
+        services.AddScoped<ReminderScheduler>();
         return services;
     }
 }
