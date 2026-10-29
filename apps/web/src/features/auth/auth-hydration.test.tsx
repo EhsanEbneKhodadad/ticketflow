@@ -6,6 +6,7 @@ jest.mock("@/i18n/navigation", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
     <a href={href}>{children}</a>
   ),
+  usePathname: () => "/login",
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
 }));
 it("prevents unhydrated authentication forms from sending credentials in a GET URL", () => {
