@@ -1,4 +1,5 @@
-import { api, apiClientFetch, apiDownload } from "./api";
+import { getApiV1Dashboard } from "@ticketflow/api-client";
+import { api, apiDownload } from "./api";
 
 it("forwards the initiating account header exactly once through the generated client", async () => {
   const userId = "52cd9547-d762-4cc9-9d2d-504a80e59690";
@@ -6,11 +7,7 @@ it("forwards the initiating account header exactly once through the generated cl
     .fn()
     .mockResolvedValue(new Response("{}", { status: 200 }));
 
-  await apiClientFetch(
-    new Request("http://localhost/api/v1/dashboard", {
-      headers: { "X-TicketFlow-User": userId },
-    }),
-  );
+  await getApiV1Dashboard({ headers: { "X-TicketFlow-User": userId } });
 
   const [, options] = jest.mocked(fetch).mock.calls[0];
   expect(new Headers(options?.headers).get("X-TicketFlow-User")).toBe(userId);
