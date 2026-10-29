@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { hashKey, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import {
   getApiV1AuthMe,
@@ -25,6 +25,16 @@ export type User = UserView;
 type Login = LoginRequest;
 type Registration = RegisterRequest;
 export const sessionQueryKey = () => getApiV1AuthMeQueryKey();
+
+function clearPrivateQueries(client: ReturnType<typeof useQueryClient>) {
+  const sessionHash = hashKey(sessionQueryKey());
+  const isPrivateQuery = (query: { queryHash: string }) =>
+    query.queryHash !== sessionHash;
+  return client.cancelQueries({ predicate: isPrivateQuery }).then(() => {
+    client.removeQueries({ predicate: isPrivateQuery });
+  });
+}
+
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
@@ -59,22 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         const previous = client.getQueryData<User | null>(sessionQueryKey());
         if (previous?.id !== next.id) {
-          await client.cancelQueries({
-            predicate: (query) => query.queryKey[0] !== "session",
-          });
-          client.removeQueries({
-            predicate: (query) => query.queryKey[0] !== "session",
-          });
+          await clearPrivateQueries(client);
         }
         return next;
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          await client.cancelQueries({
-            predicate: (query) => query.queryKey[0] !== "session",
-          });
-          client.removeQueries({
-            predicate: (query) => query.queryKey[0] !== "session",
-          });
+          await clearPrivateQueries(client);
           return null;
         }
         throw error;
