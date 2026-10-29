@@ -3,17 +3,13 @@ import { Link } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getApiV1TicketsOptions } from "@ticketflow/api-client";
 import { Search, Plus, Inbox, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
+import "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
-import {
-  ticketsApi,
-  ticketStatuses,
-  ticketPriorities,
-  initials,
-  dateLabel,
-} from "./api";
+import { ticketStatuses, ticketPriorities, initials, dateLabel } from "./api";
 
 export function TicketList({ view = "all" }: { view?: string }) {
   const locale = useLocale();
@@ -28,19 +24,27 @@ export function TicketList({ view = "all" }: { view?: string }) {
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const request = {
+    Page: page,
+    PageSize: 10,
+    ...(status
+      ? { Status: status as import("@ticketflow/api-client").TicketStatus }
+      : {}),
+    ...(priority
+      ? {
+          Priority: priority as import("@ticketflow/api-client").TicketPriority,
+        }
+      : {}),
+    ...(search ? { Q: search } : {}),
+    ...(staff && view === "mine" && user ? { AgentId: user.id } : {}),
+    ...(staff && view === "unassigned" ? { Unassigned: true } : {}),
+  };
   const query = useQuery({
-    queryKey: ["tickets", user?.id, view, status, priority, search, page],
+    ...getApiV1TicketsOptions({
+      query: request,
+      headers: user ? { "X-TicketFlow-User": user.id } : undefined,
+    }),
     enabled: !!user,
-    queryFn: () =>
-      ticketsApi.list({
-        page: String(page),
-        pageSize: "10",
-        ...(status ? { status } : {}),
-        ...(priority ? { priority } : {}),
-        ...(search ? { q: search } : {}),
-        ...(staff && view === "mine" && user ? { agentId: user.id } : {}),
-        ...(staff && view === "unassigned" ? { unassigned: "true" } : {}),
-      }),
   });
   const total = Number(query.data?.total ?? 0);
   const title = !staff

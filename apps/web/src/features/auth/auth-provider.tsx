@@ -6,15 +6,46 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
-import type { components } from "@ticketflow/api-client";
-import { api, ApiError } from "@/lib/api";
+import {
+  getApiV1AuthMe,
+  getApiV1AuthMeQueryKey,
+  postApiV1AuthLoginMutation,
+  postApiV1AuthRegisterMutation,
+  postApiV1AuthLogoutMutation,
+  type LoginRequest,
+  type RegisterRequest,
+  type UserView,
+} from "@ticketflow/api-client";
+import { ApiError } from "@/lib/api";
 import { useTranslations } from "next-intl";
 
-export type User = components["schemas"]["UserView"];
-type Login = components["schemas"]["LoginRequest"];
-type Registration = components["schemas"]["RegisterRequest"];
+export type User = UserView;
+type Login = LoginRequest;
+type Registration = RegisterRequest;
+export const sessionQueryKey = () => getApiV1AuthMeQueryKey();
+
+function clearPrivateQueries(client: QueryClient) {
+  const sessionOperation = sessionQueryKey()[0]._id;
+  const isPrivateQuery = (query: { queryKey: readonly unknown[] }) => {
+    const key = query.queryKey[0];
+    const isSessionQuery =
+      typeof key === "object" &&
+      key !== null &&
+      "_id" in key &&
+      key._id === sessionOperation;
+    return !isSessionQuery;
+  };
+  return client.cancelQueries({ predicate: isPrivateQuery }).then(() => {
+    client.removeQueries({ predicate: isPrivateQuery });
+  });
+}
+
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
@@ -33,30 +64,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient();
   const router = useRouter();
   const [sessionNotice, setSessionNotice] = useState("");
-  const session = useQuery({
-    queryKey: ["session"],
+  const session = useQuery<
+    User | null,
+    Error,
+    User | null,
+    ReturnType<typeof sessionQueryKey>
+  >({
+    queryKey: sessionQueryKey(),
     staleTime: 60000,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       try {
-        const next = await api<User>("/auth/me");
-        const previous = client.getQueryData<User | null>(["session"]);
+        const { data: next } = await getApiV1AuthMe({
+          signal,
+          throwOnError: true,
+        });
+        const previous = client.getQueryData<User | null>(sessionQueryKey());
         if (previous?.id !== next.id) {
-          await client.cancelQueries({
-            predicate: (query) => query.queryKey[0] !== "session",
-          });
-          client.removeQueries({
-            predicate: (query) => query.queryKey[0] !== "session",
-          });
+          await clearPrivateQueries(client);
         }
         return next;
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          await client.cancelQueries({
-            predicate: (query) => query.queryKey[0] !== "session",
-          });
-          client.removeQueries({
-            predicate: (query) => query.queryKey[0] !== "session",
-          });
+          await clearPrivateQueries(client);
           return null;
         }
         throw error;
@@ -72,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : "",
       );
       client.clear();
-      client.setQueryData(["session"], null);
+      client.setQueryData(sessionQueryKey(), null);
       router.replace("/login");
     };
     window.addEventListener("ticketflow:session-expired", expired);
@@ -81,13 +110,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [client, errors, router]);
 
   async function authenticate(path: string, input: Login | Registration) {
-    const user = await api<User>(path, {
-      method: "POST",
-      body: JSON.stringify(input),
-    });
+    const request =
+      path === "/auth/login"
+        ? postApiV1AuthLoginMutation().mutationFn!(
+            {
+              body: input as Login,
+              throwOnError: true,
+            },
+            undefined as never,
+          )
+        : postApiV1AuthRegisterMutation().mutationFn!(
+            {
+              body: input as Registration,
+              throwOnError: true,
+            },
+            undefined as never,
+          );
+    const user = await request;
     client.clear();
     setSessionNotice("");
-    client.setQueryData(["session"], user);
+    client.setQueryData(sessionQueryKey(), user);
     router.push("/tickets");
   }
 
@@ -101,14 +143,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn: (input) => authenticate("/auth/login", input),
         register: (input) => authenticate("/auth/register", input),
         signOut: async () => {
-          await api<void>("/auth/logout", { method: "POST", body: "{}" });
+          await postApiV1AuthLogoutMutation().mutationFn!(
+            {
+              throwOnError: true,
+            },
+            undefined as never,
+          );
           client.clear();
-          client.setQueryData(["session"], null);
+          client.setQueryData(sessionQueryKey(), null);
           router.replace("/login");
         },
         clearSession: () => {
           client.clear();
-          client.setQueryData(["session"], null);
+          client.setQueryData(sessionQueryKey(), null);
         },
         retry: () => {
           void session.refetch();

@@ -49,6 +49,7 @@ it("keeps a draft's original concurrency version after a background refetch", as
         description: "Original description",
         title: "My unsaved draft",
       }),
+      undefined,
     ),
   );
   expect(screen.getByLabelText("What happened?")).toHaveValue(

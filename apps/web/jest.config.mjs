@@ -3,6 +3,7 @@ const createJestConfig = nextJest({ dir: "./" });
 export default createJestConfig({
   modulePathIgnorePatterns: ["<rootDir>/.next/"],
   testEnvironment: "jsdom",
+  setupFiles: ["<rootDir>/jest.polyfills.ts"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   testMatch: ["**/*.test.ts?(x)"],
   moduleNameMapper: { "^@/(.*)$": "<rootDir>/src/$1" },

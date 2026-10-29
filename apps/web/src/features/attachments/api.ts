@@ -1,6 +1,11 @@
-import type { components } from "@ticketflow/api-client";
-import { api, apiDownload } from "@/lib/api";
-export type Attachment = components["schemas"]["AttachmentView"];
+import {
+  getApiV1TicketsByIdAttachments,
+  getApiV1TicketsByIdAttachmentsByAttachmentIdDownload,
+  postApiV1TicketsByIdAttachmentsMutation,
+  type AttachmentView,
+  type UploadAttachmentForm,
+} from "@ticketflow/api-client";
+export type Attachment = AttachmentView;
 export const attachmentsApi = {
   list: (
     ticketId: string,
@@ -8,10 +13,14 @@ export const attachmentsApi = {
     principalId: string,
     isCurrent: () => boolean,
   ) =>
-    api<Attachment[]>(`/tickets/${ticketId}/attachments`, {
+    getApiV1TicketsByIdAttachments({
+      path: { id: ticketId },
       signal,
-      isCurrent,
-      expectedPrincipalId: principalId,
+      headers: { "X-TicketFlow-User": principalId },
+      throwOnError: true,
+    }).then(({ data }) => {
+      if (!isCurrent()) throw new Error("The account changed.");
+      return data;
     }),
   upload: (
     ticketId: string,
@@ -21,25 +30,50 @@ export const attachmentsApi = {
     principalId: string,
     isCurrent: () => boolean,
   ) => {
-    const body = new FormData();
-    body.set("file", file);
-    body.set("expectedVersion", String(version));
-    if (messageId) body.set("messageId", messageId);
-    return api<Attachment>(`/tickets/${ticketId}/attachments`, {
-      method: "POST",
-      body,
-      isCurrent,
-      expectedPrincipalId: principalId,
+    const body: UploadAttachmentForm = {
+      file,
+      expectedVersion: version,
+      ...(messageId ? { messageId } : {}),
+    };
+    return postApiV1TicketsByIdAttachmentsMutation({
+      headers: { "X-TicketFlow-User": principalId },
+    }).mutationFn!(
+      {
+        path: { id: ticketId },
+        body,
+        throwOnError: true,
+      },
+      undefined as never,
+    ).then((data) => {
+      if (!isCurrent()) throw new Error("The account changed.");
+      return data;
     });
   },
-  download: (
+  download: async (
     ticketId: string,
     id: string,
     principalId: string,
     isCurrent: () => boolean,
-  ) =>
-    apiDownload(`/tickets/${ticketId}/attachments/${id}/download`, {
-      isCurrent,
-      expectedPrincipalId: principalId,
-    }),
+  ) => {
+    const { data, response } =
+      await getApiV1TicketsByIdAttachmentsByAttachmentIdDownload({
+        path: { id: ticketId, attachmentId: id },
+        headers: { "X-TicketFlow-User": principalId },
+        throwOnError: true,
+      });
+    if (!isCurrent()) throw new Error("The account changed.");
+    const blob = data instanceof Blob ? data : new Blob([data as BlobPart]);
+    const disposition = response.headers.get("Content-Disposition") ?? "";
+    const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+    const plain = /filename="([^"\r\n]+)"/i.exec(disposition)?.[1];
+    let fileName = plain ?? "attachment";
+    if (encoded) {
+      try {
+        fileName = decodeURIComponent(encoded);
+      } catch {
+        // Keep the safe fallback.
+      }
+    }
+    return { blob, fileName };
+  },
 };

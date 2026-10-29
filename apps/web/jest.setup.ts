@@ -1,5 +1,22 @@
 import "@testing-library/jest-dom";
+import {
+  Blob as EdgeBlob,
+  File as EdgeFile,
+  FormData as EdgeFormData,
+  Headers as EdgeHeaders,
+  Request as EdgeRequest,
+  Response as EdgeResponse,
+} from "next/dist/compiled/@edge-runtime/primitives";
 import mockEnglishMessages from "./messages/en.json";
+
+Object.assign(globalThis, {
+  Blob: EdgeBlob,
+  File: EdgeFile,
+  FormData: EdgeFormData,
+  Headers: EdgeHeaders,
+  Request: EdgeRequest,
+  Response: EdgeResponse,
+});
 
 jest.mock("next-intl", () => {
   const React = jest.requireActual<typeof import("react")>("react");

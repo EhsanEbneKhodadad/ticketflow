@@ -1,4 +1,84 @@
-import { api, apiDownload } from "./api";
+import {
+  getApiV1Dashboard,
+  postApiV1AuthRegister,
+} from "@ticketflow/api-client";
+import { api, apiClientFetch, apiDownload } from "./api";
+
+it("sends generated JSON mutations as ordinary request bytes with CSRF", async () => {
+  const body = {
+    name: "Transport Customer",
+    email: "transport@example.test",
+    password: "TransportPassword!2026",
+  };
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce(Response.json({ token: "csrf-token" }))
+    .mockResolvedValueOnce(Response.json({ id: "created-user" }));
+
+  await postApiV1AuthRegister({ body, throwOnError: true });
+
+  const [, options] = jest.mocked(fetch).mock.calls[1];
+  // Streaming upload bodies require browser/proxy support that this HTTP stack
+  // does not provide. Ordinary bytes must preserve the generated serialization.
+  expect(options?.body).not.toHaveProperty("getReader");
+  expect(await new Response(options?.body).json()).toEqual(body);
+  const headers = new Headers(options?.headers);
+  expect(headers.get("Content-Type")).toBe("application/json");
+  expect(headers.get("X-CSRF-TOKEN")).toBe("csrf-token");
+});
+
+it("replays identical multipart bytes and boundary after renewing a generated request", async () => {
+  const principal = "52cd9547-d762-4cc9-9d2d-504a80e59690";
+  const contentType = "multipart/form-data; boundary=transport-boundary";
+  const body =
+    '--transport-boundary\r\nContent-Disposition: form-data; name="file"; filename="original.txt"\r\nContent-Type: text/plain\r\n\r\noriginal bytes\r\n--transport-boundary--\r\n';
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce(Response.json({ token: "first-csrf" }))
+    .mockResolvedValueOnce(Response.json({}, { status: 401 }))
+    .mockResolvedValueOnce(Response.json({ id: principal }))
+    .mockResolvedValueOnce(Response.json({ token: "renewed-csrf" }))
+    .mockResolvedValueOnce(Response.json({ id: "attachment" }));
+
+  await apiClientFetch(
+    new Request("http://localhost/api/v1/tickets/id/attachments", {
+      method: "POST",
+      headers: {
+        "Content-Type": contentType,
+        "X-TicketFlow-User": principal,
+      },
+      body,
+    }),
+  );
+
+  const uploads = jest
+    .mocked(fetch)
+    .mock.calls.filter(([url]) => url === "/api/v1/tickets/id/attachments");
+  expect(uploads).toHaveLength(2);
+  for (const [, options] of uploads) {
+    expect(options?.body).not.toHaveProperty("getReader");
+    expect(await new Response(options?.body).text()).toBe(body);
+    const headers = new Headers(options?.headers);
+    expect(headers.get("Content-Type")).toBe(contentType);
+    expect(headers.get("X-TicketFlow-User")).toBe(principal);
+  }
+  expect(new Headers(uploads[1][1]?.headers).get("X-CSRF-TOKEN")).toBe(
+    "renewed-csrf",
+  );
+});
+
+it("forwards the initiating account header exactly once through the generated client", async () => {
+  const userId = "52cd9547-d762-4cc9-9d2d-504a80e59690";
+  global.fetch = jest
+    .fn()
+    .mockResolvedValue(new Response("{}", { status: 200 }));
+
+  await getApiV1Dashboard({ headers: { "X-TicketFlow-User": userId } });
+
+  const [, options] = jest.mocked(fetch).mock.calls[0];
+  expect(new Headers(options?.headers).get("X-TicketFlow-User")).toBe(userId);
+});
+
 it("rechecks shared cookies after obtaining the cross-tab refresh lock", async () => {
   const request = jest.fn(async (_name, callback) => callback());
   Object.defineProperty(navigator, "locks", {

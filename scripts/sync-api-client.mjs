@@ -1,5 +1,5 @@
-import { copyFile, lstat, mkdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { copyFile, lstat, mkdir, readdir, stat } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -13,10 +13,31 @@ const info = await lstat(installed).catch((error) => {
   return undefined;
 });
 if (!info?.isSymbolicLink()) {
-  for (const file of ["package.json", "src/index.ts", "src/schema.d.ts"]) {
-    const destination = join(installed, file);
-    await mkdir(dirname(destination), { recursive: true });
-    await copyFile(join(source, file), destination);
-  }
+  await mkdir(installed, { recursive: true });
+  await copyFile(join(source, "package.json"), join(installed, "package.json"));
+  const syncDirectory = async (relativePath) => {
+    const from = join(source, relativePath);
+    const to = join(installed, relativePath);
+    await mkdir(to, { recursive: true });
+    for (const entry of await readdir(from, { withFileTypes: true })) {
+      const relativeEntry = join(relativePath, entry.name);
+      if (entry.isDirectory()) {
+        await syncDirectory(relativeEntry);
+        continue;
+      }
+      const sourceFile = join(source, relativeEntry);
+      const installedFile = join(installed, relativeEntry);
+      const sourceStat = await stat(sourceFile);
+      const installedStat = await stat(installedFile).catch(() => undefined);
+      if (
+        !installedStat ||
+        sourceStat.dev !== installedStat.dev ||
+        sourceStat.ino !== installedStat.ino
+      ) {
+        await copyFile(sourceFile, installedFile);
+      }
+    }
+  };
+  await syncDirectory("src");
 }
 console.log("Installed API contract synchronized.");

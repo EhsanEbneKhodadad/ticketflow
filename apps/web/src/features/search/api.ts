@@ -1,8 +1,16 @@
-import type { components } from "@ticketflow/api-client";
-import { api } from "@/lib/api";
-export type SearchPage = components["schemas"]["TicketSearchPage"];
-export type SearchSegment = components["schemas"]["SearchTextSegment"];
-export type SearchSort = components["schemas"]["SearchSort"];
+import {
+  getApiV1SearchTicketsQueryKey,
+  type SearchSort,
+  type SearchTextSegment,
+  type TicketSearchPage,
+} from "@ticketflow/api-client";
+export type SearchPage = TicketSearchPage;
+export type SearchSegment = SearchTextSegment;
+export type { SearchSort };
+export const searchQueryKey = (principalId?: string) =>
+  getApiV1SearchTicketsQueryKey({
+    headers: principalId ? { "X-TicketFlow-User": principalId } : undefined,
+  });
 export const searchFields = [
   "q",
   "status",
@@ -24,17 +32,23 @@ export function searchParameters(input: Record<string, string>) {
   );
   return query;
 }
-export function searchTickets(
-  query: URLSearchParams,
-  signal: AbortSignal,
-  principalId: string,
-  isCurrent: () => boolean,
-) {
+export function searchRequest(query: URLSearchParams) {
   const request = new URLSearchParams(query);
   request.set("pageSize", "20");
-  return api<SearchPage>("/search/tickets?" + request, {
-    signal,
-    isCurrent,
-    expectedPrincipalId: principalId,
-  });
+  return {
+    Q: request.get("q") ?? undefined,
+    Page: request.get("page") ?? "1",
+    PageSize: request.get("pageSize") ?? "20",
+    Status: (request.get("status") || undefined) as
+      | import("@ticketflow/api-client").TicketStatus
+      | undefined,
+    Priority: (request.get("priority") || undefined) as
+      | import("@ticketflow/api-client").TicketPriority
+      | undefined,
+    CategoryId: request.get("categoryId") ?? undefined,
+    AgentId: request.get("agentId") ?? undefined,
+    From: request.get("from") ?? undefined,
+    To: request.get("to") ?? undefined,
+    Sort: (request.get("sort") || undefined) as SearchSort | undefined,
+  };
 }

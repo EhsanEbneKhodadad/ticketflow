@@ -8,7 +8,10 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Check, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import {
+  postApiV1AuthForgotPasswordMutation,
+  postApiV1AuthResetPasswordMutation,
+} from "@ticketflow/api-client";
 import { useErrorMessage } from "@/lib/use-error-message";
 import { useAuth } from "./auth-provider";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -62,20 +65,26 @@ export function AuthScreen({
           name: values.name ?? "",
         });
       else if (mode === "forgot") {
-        await api("/auth/forgot-password", {
-          method: "POST",
-          body: JSON.stringify({ email: values.email }),
-        });
+        await postApiV1AuthForgotPasswordMutation().mutationFn!(
+          {
+            body: { email: values.email },
+            throwOnError: true,
+          },
+          undefined as never,
+        );
         setMessage(t("checkEmail"));
       } else {
-        await api("/auth/reset-password", {
-          method: "POST",
-          body: JSON.stringify({
-            email: values.email,
-            token,
-            password: values.password,
-          }),
-        });
+        await postApiV1AuthResetPasswordMutation().mutationFn!(
+          {
+            body: {
+              email: values.email,
+              token,
+              password: values.password,
+            },
+            throwOnError: true,
+          },
+          undefined as never,
+        );
         auth.clearSession();
         setMessage(t("resetDone"));
         window.setTimeout(() => router.push("/login"), 1500);

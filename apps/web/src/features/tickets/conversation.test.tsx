@@ -7,7 +7,8 @@ import {
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { components } from "@ticketflow/api-client";
-import { ticketsApi } from "./api";
+import { ticketKeys, ticketsApi } from "./api";
+import { sessionQueryKey } from "@/features/auth/auth-provider";
 import { Conversation } from "./conversation";
 
 const ticket: components["schemas"]["TicketView"] = {
@@ -108,7 +109,7 @@ it("discards a staff mutation response after the active account changes", async 
   const client = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   });
-  client.setQueryData(["session"], { id: "staff" });
+  client.setQueryData(sessionQueryKey(), { id: "staff" });
   let finish!: (value: typeof ticket) => void;
   const reply = jest.spyOn(ticketsApi, "reply").mockImplementation(
     () =>
@@ -126,14 +127,16 @@ it("discards a staff mutation response after the active account changes", async 
   });
   fireEvent.click(screen.getByRole("button", { name: "Send reply" }));
   await waitFor(() => expect(reply).toHaveBeenCalled());
-  client.setQueryData(["session"], { id: "customer" });
+  client.setQueryData(sessionQueryKey(), { id: "customer" });
   await act(async () => {
     finish(ticket);
   });
   expect(
-    client.getQueryData(["ticket", ticket.id, "customer"]),
+    client.getQueryData(ticketKeys.detail(ticket.id, "customer")),
   ).toBeUndefined();
-  expect(client.getQueryData(["ticket", ticket.id, "staff"])).toBeUndefined();
+  expect(
+    client.getQueryData(ticketKeys.detail(ticket.id, "staff")),
+  ).toBeUndefined();
   expect(screen.queryByText("Reply sent.")).not.toBeInTheDocument();
   reply.mockRestore();
 });

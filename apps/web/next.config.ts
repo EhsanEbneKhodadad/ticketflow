@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 const config: NextConfig = {
   output: "standalone",
+  transpilePackages: ["@ticketflow/api-client"],
   poweredByHeader: false,
   devIndicators: false,
   experimental: { proxyClientMaxBodySize: 10485760 + 65536 },

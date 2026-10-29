@@ -2,13 +2,15 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getApiV1AgentsOptions } from "@ticketflow/api-client";
 import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { User } from "@/features/auth/auth-provider";
+import { sessionQueryKey, type User } from "@/features/auth/auth-provider";
 import { ApiError } from "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
 import {
   ticketsApi,
+  ticketKeys,
   ticketPriorities,
   type Ticket,
   type Status,
@@ -41,43 +43,68 @@ export function TicketManagement({
   const statusText = useTranslations("TicketStatus");
   const priorityText = useTranslations("Priority");
   const client = useQueryClient();
+  const principal = client.getQueryData<User>(sessionQueryKey())?.id;
   const [status, setStatus] = useState(ticket.status);
   const [priority, setPriority] = useState(ticket.priority);
   const [agent, setAgent] = useState(ticket.agentId ?? "");
   const agents = useQuery({
-    queryKey: ["agents", client.getQueryData<User>(["session"])?.id],
-    queryFn: ticketsApi.agents,
+    ...getApiV1AgentsOptions({
+      headers: principal ? { "X-TicketFlow-User": principal } : undefined,
+    }),
     enabled: staff,
   });
   const mutation = useMutation({
-    onMutate: () => ({ principal: client.getQueryData<User>(["session"])?.id }),
+    onMutate: () => ({
+      principal: client.getQueryData<User>(sessionQueryKey())?.id,
+    }),
     mutationFn: (change: Change) => {
       onError("");
       if (change.kind === "status")
-        return ticketsApi.status(ticket.id, {
-          status: change.value,
-          expectedVersion: ticket.version,
-        });
+        return ticketsApi.status(
+          ticket.id,
+          {
+            status: change.value,
+            expectedVersion: ticket.version,
+          },
+          principal,
+        );
       if (change.kind === "priority")
-        return ticketsApi.priority(ticket.id, {
-          priority: change.value,
+        return ticketsApi.priority(
+          ticket.id,
+          {
+            priority: change.value,
+            expectedVersion: ticket.version,
+          },
+          principal,
+        );
+      return ticketsApi.assign(
+        ticket.id,
+        {
+          agentId: change.value || null,
           expectedVersion: ticket.version,
-        });
-      return ticketsApi.assign(ticket.id, {
-        agentId: change.value || null,
-        expectedVersion: ticket.version,
-      });
+        },
+        principal,
+      );
     },
     onSuccess: (updated, _variables, context) => {
-      if (context?.principal !== client.getQueryData<User>(["session"])?.id)
+      if (
+        context?.principal !== client.getQueryData<User>(sessionQueryKey())?.id
+      )
         return;
-      client.setQueryData(["ticket", ticket.id, context?.principal], updated);
-      void client.invalidateQueries({ queryKey: ["tickets"] });
+      client.setQueryData(
+        ticketKeys.detail(ticket.id, context?.principal),
+        updated,
+      );
+      void client.invalidateQueries({
+        queryKey: ticketKeys.list(context?.principal),
+      });
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
       onError(errorMessage(error));
       if (error instanceof ApiError && error.status === 409)
-        void client.invalidateQueries({ queryKey: ["ticket", ticket.id] });
+        void client.invalidateQueries({
+          queryKey: ticketKeys.detail(ticket.id, context?.principal),
+        });
     },
   });
   return (

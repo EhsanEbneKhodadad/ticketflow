@@ -1,4 +1,7 @@
-import type { components } from "@ticketflow/api-client";
+import {
+  client as generatedApiClient,
+  type components,
+} from "@ticketflow/api-client";
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -46,9 +49,17 @@ async function perform(path: string, options: Options = {}) {
   assertCurrent(options);
   const method = (options.method ?? "GET").toUpperCase();
   const headers = { ...options.headers } as Record<string, string>;
-  if (options.expectedPrincipalId)
+  if (options.expectedPrincipalId) {
+    for (const name of Object.keys(headers)) {
+      if (name.toLowerCase() === "x-ticketflow-user") delete headers[name];
+    }
     headers["X-TicketFlow-User"] = options.expectedPrincipalId;
-  if (options.body && !(options.body instanceof FormData))
+  }
+  if (
+    options.body &&
+    !headers["Content-Type"] &&
+    typeof options.body === "string"
+  )
     headers["Content-Type"] = "application/json";
   if (!["GET", "HEAD", "OPTIONS"].includes(method))
     headers["X-CSRF-TOKEN"] = await csrfToken();
@@ -68,6 +79,51 @@ async function perform(path: string, options: Options = {}) {
     cache: "no-store",
   });
 }
+
+/**
+ * Hey API transport adapter. Generated SDK calls still pass through the same
+ * CSRF, refresh, account-change, and no-store handling as handwritten calls.
+ */
+export async function apiClientFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const request =
+    input instanceof Request
+      ? new Request(input, init)
+      : new Request(new URL(input.toString(), window.location.origin), init);
+  const url = new URL(request.url, window.location.origin);
+  const apiPrefix = "/api/v1";
+  if (!url.pathname.startsWith(apiPrefix))
+    throw new ApiError(0, "The API request URL is not supported.");
+  const path = url.pathname.slice(apiPrefix.length) + url.search;
+  const response = await apiResponse(path, {
+    method: request.method,
+    headers: Object.fromEntries(request.headers.entries()),
+    // Browser streaming uploads require duplex/HTTP support that the proxy does
+    // not provide. Buffer once so JSON and multipart bytes also survive retries.
+    body: request.body ? await request.clone().arrayBuffer() : undefined,
+    signal: request.signal,
+    expectedPrincipalId: request.headers.get("X-TicketFlow-User") ?? undefined,
+  });
+  if (typeof response.headers?.get !== "function") {
+    const payload = await response.json().catch(() => undefined);
+    const normalized = new Response(
+      payload === undefined ? null : JSON.stringify(payload),
+      {
+        status: response.status || 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+    return normalized;
+  }
+  return response;
+}
+
+generatedApiClient.setConfig({
+  baseUrl: typeof window === "undefined" ? "" : window.location.origin,
+  fetch: apiClientFetch,
+});
 
 async function renewedIdentity(response: Response) {
   const user: components["schemas"]["UserView"] = await response.json();

@@ -6,6 +6,10 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  getApiV1AuthMeQueryKey,
+  getApiV1SearchTicketsQueryKey,
+} from "@ticketflow/api-client";
 import { TicketSearch, SearchSnippet } from "./ticket-search";
 const push = jest.fn();
 let mockRole = "Customer";
@@ -23,7 +27,7 @@ function mount(params: Record<string, string> = {}) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  client.setQueryData(["session"], { id: "customer" });
+  client.setQueryData(getApiV1AuthMeQueryKey(), { id: "customer" });
   render(
     <QueryClientProvider client={client}>
       <TicketSearch params={params} />
@@ -119,10 +123,14 @@ it("keeps search results scoped to the active account and all URL filters", asyn
   });
   await screen.findByText("No tickets match your search.");
   expect(jest.mocked(fetch).mock.calls.map(([path]) => path)).toContain(
-    "/api/v1/search/tickets?q=reply&categoryId=category&agentId=agent&from=2026-10-01&to=2026-10-28&sort=newest&page=1&pageSize=20",
+    "/api/v1/search/tickets?Q=reply&Page=1&PageSize=20&CategoryId=category&AgentId=agent&From=2026-10-01&To=2026-10-28&Sort=newest",
   );
   expect(
-    client.getQueryCache().findAll({ queryKey: ["search", "other"] }),
+    client.getQueryCache().findAll({
+      queryKey: getApiV1SearchTicketsQueryKey({
+        headers: { "X-TicketFlow-User": "other" },
+      }),
+    }),
   ).toHaveLength(0);
 });
 it("explains a search outage and allows retry while linking to ticket browsing", async () => {
