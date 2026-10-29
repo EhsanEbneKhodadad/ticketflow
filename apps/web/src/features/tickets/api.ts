@@ -1,42 +1,113 @@
-import type { components } from "@ticketflow/api-client";
-import { api } from "@/lib/api";
-type Schemas = components["schemas"];
-export type Ticket = Schemas["TicketView"];
-export type Status = Schemas["TicketStatus"];
-export type Priority = Schemas["TicketPriority"];
+import {
+  getApiV1Agents,
+  getApiV1Categories,
+  getApiV1Tickets,
+  getApiV1TicketsQueryKey,
+  getApiV1TicketsById,
+  getApiV1TicketsByIdQueryKey,
+  postApiV1TicketsMutation,
+  postApiV1TicketsByIdMessagesMutation,
+  patchApiV1TicketsByIdStatusMutation,
+  patchApiV1TicketsByIdPriorityMutation,
+  patchApiV1TicketsByIdAssignmentMutation,
+  putApiV1TicketsByIdMutation,
+  type AssignmentRequest,
+  type CreateTicketRequest,
+  type EditTicketRequest,
+  type MessageRequest,
+  type PriorityRequest,
+  type StatusRequest,
+  type TicketPriority,
+  type TicketStatus,
+} from "@ticketflow/api-client";
+export type Ticket = import("@ticketflow/api-client").TicketView;
+export type Status = TicketStatus;
+export type Priority = TicketPriority;
+const headers = (principalId?: string) =>
+  principalId ? { "X-TicketFlow-User": principalId } : undefined;
+export const ticketKeys = {
+  list: (principalId?: string) =>
+    getApiV1TicketsQueryKey({ headers: headers(principalId) }),
+  detail: (id: string, principalId?: string) =>
+    getApiV1TicketsByIdQueryKey({
+      path: { id },
+      headers: headers(principalId),
+    }),
+};
 export const ticketsApi = {
-  list: (query: Record<string, string>) =>
-    api<Schemas["TicketPage"]>("/tickets?" + new URLSearchParams(query)),
-  get: (id: string) => api<Ticket>("/tickets/" + id),
-  categories: () => api<Schemas["CategoryView"][]>("/categories"),
-  agents: () => api<Schemas["AgentView"][]>("/agents"),
-  create: (input: Schemas["CreateTicketRequest"]) =>
-    api<Ticket>("/tickets", { method: "POST", body: JSON.stringify(input) }),
-  edit: (id: string, input: Schemas["EditTicketRequest"]) =>
-    api<Ticket>("/tickets/" + id, {
-      method: "PUT",
-      body: JSON.stringify(input),
-    }),
-  reply: (id: string, input: Schemas["MessageRequest"]) =>
-    api<Ticket>("/tickets/" + id + "/messages", {
-      method: "POST",
-      body: JSON.stringify(input),
-    }),
-  status: (id: string, input: Schemas["StatusRequest"]) =>
-    api<Ticket>("/tickets/" + id + "/status", {
-      method: "PATCH",
-      body: JSON.stringify(input),
-    }),
-  priority: (id: string, input: Schemas["PriorityRequest"]) =>
-    api<Ticket>("/tickets/" + id + "/priority", {
-      method: "PATCH",
-      body: JSON.stringify(input),
-    }),
-  assign: (id: string, input: Schemas["AssignmentRequest"]) =>
-    api<Ticket>("/tickets/" + id + "/assignment", {
-      method: "PATCH",
-      body: JSON.stringify(input),
-    }),
+  list: async (
+    query: NonNullable<
+      import("@ticketflow/api-client").GetApiV1TicketsData["query"]
+    >,
+    principalId?: string,
+  ) =>
+    (
+      await getApiV1Tickets({
+        query,
+        headers: headers(principalId),
+        throwOnError: true,
+      })
+    ).data,
+  get: async (id: string, principalId?: string) =>
+    (
+      await getApiV1TicketsById({
+        path: { id },
+        headers: headers(principalId),
+        throwOnError: true,
+      })
+    ).data,
+  categories: async (principalId?: string) =>
+    (
+      await getApiV1Categories({
+        headers: headers(principalId),
+        throwOnError: true,
+      })
+    ).data,
+  agents: async (principalId?: string) =>
+    (
+      await getApiV1Agents({
+        headers: headers(principalId),
+        throwOnError: true,
+      })
+    ).data,
+  create: async (input: CreateTicketRequest, principalId?: string) =>
+    postApiV1TicketsMutation({ headers: headers(principalId) }).mutationFn!(
+      { body: input, throwOnError: true },
+      undefined as never,
+    ),
+  edit: async (id: string, input: EditTicketRequest, principalId?: string) =>
+    putApiV1TicketsByIdMutation({ headers: headers(principalId) }).mutationFn!(
+      { path: { id }, body: input, throwOnError: true },
+      undefined as never,
+    ),
+  reply: async (id: string, input: MessageRequest, principalId?: string) =>
+    postApiV1TicketsByIdMessagesMutation({
+      headers: headers(principalId),
+    }).mutationFn!(
+      { path: { id }, body: input, throwOnError: true },
+      undefined as never,
+    ),
+  status: async (id: string, input: StatusRequest, principalId?: string) =>
+    patchApiV1TicketsByIdStatusMutation({
+      headers: headers(principalId),
+    }).mutationFn!(
+      { path: { id }, body: input, throwOnError: true },
+      undefined as never,
+    ),
+  priority: async (id: string, input: PriorityRequest, principalId?: string) =>
+    patchApiV1TicketsByIdPriorityMutation({
+      headers: headers(principalId),
+    }).mutationFn!(
+      { path: { id }, body: input, throwOnError: true },
+      undefined as never,
+    ),
+  assign: async (id: string, input: AssignmentRequest, principalId?: string) =>
+    patchApiV1TicketsByIdAssignmentMutation({
+      headers: headers(principalId),
+    }).mutationFn!(
+      { path: { id }, body: input, throwOnError: true },
+      undefined as never,
+    ),
 };
 export const ticketStatuses: Status[] = [
   "open",

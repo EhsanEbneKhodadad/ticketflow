@@ -2,12 +2,15 @@
 import { useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getApiV1TicketsByIdAttachmentsQueryKey } from "@ticketflow/api-client";
 import { Download, Paperclip, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { User } from "@/features/auth/auth-provider";
+import { sessionQueryKey, type User } from "@/features/auth/auth-provider";
 import { ApiError } from "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
 import { attachmentsApi } from "./api";
+import { ticketKeys } from "@/features/tickets/api";
+import { searchQueryKey } from "@/features/search/api";
 
 type Props = {
   ticketId: string;
@@ -39,8 +42,11 @@ export function AttachmentPanel({
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const isCurrent = () =>
-    client.getQueryData<User>(["session"])?.id === principalId;
-  const key = ["attachments", ticketId, principalId];
+    client.getQueryData<User>(sessionQueryKey())?.id === principalId;
+  const key = getApiV1TicketsByIdAttachmentsQueryKey({
+    path: { id: ticketId },
+    headers: { "X-TicketFlow-User": principalId },
+  });
   const query = useQuery({
     queryKey: key,
     queryFn: ({ signal }) =>
@@ -49,11 +55,11 @@ export function AttachmentPanel({
   });
   const refresh = () => {
     void client.invalidateQueries({
-      queryKey: ["ticket", ticketId, principalId],
+      queryKey: ticketKeys.detail(ticketId, principalId),
     });
     void client.invalidateQueries({ queryKey: key });
-    void client.invalidateQueries({ queryKey: ["tickets", principalId] });
-    void client.invalidateQueries({ queryKey: ["search", principalId] });
+    void client.invalidateQueries({ queryKey: ticketKeys.list(principalId) });
+    void client.invalidateQueries({ queryKey: searchQueryKey(principalId) });
   };
   async function upload() {
     setNotice("");

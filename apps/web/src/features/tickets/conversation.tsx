@@ -5,10 +5,16 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole, Send, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { User } from "@/features/auth/auth-provider";
+import { sessionQueryKey, type User } from "@/features/auth/auth-provider";
 import { ApiError } from "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
-import { ticketsApi, initials, timeLabel, type Ticket } from "./api";
+import {
+  ticketsApi,
+  ticketKeys,
+  initials,
+  timeLabel,
+  type Ticket,
+} from "./api";
 
 export function Conversation({
   ticket,
@@ -32,25 +38,40 @@ export function Conversation({
     formState: { errors },
   } = useForm({ defaultValues: { body: "" } });
   const mutation = useMutation({
-    onMutate: () => ({ principal: client.getQueryData<User>(["session"])?.id }),
+    onMutate: () => ({
+      principal: client.getQueryData<User>(sessionQueryKey())?.id,
+    }),
     mutationFn: (input: { body: string }) =>
-      ticketsApi.reply(ticket.id, {
-        body: input.body,
-        internal,
-        expectedVersion: ticket.version,
-      }),
+      ticketsApi.reply(
+        ticket.id,
+        {
+          body: input.body,
+          internal,
+          expectedVersion: ticket.version,
+        },
+        client.getQueryData<User>(sessionQueryKey())?.id,
+      ),
     onSuccess: (updated, _variables, context) => {
-      if (context?.principal !== client.getQueryData<User>(["session"])?.id)
+      if (
+        context?.principal !== client.getQueryData<User>(sessionQueryKey())?.id
+      )
         return;
-      client.setQueryData(["ticket", ticket.id, context?.principal], updated);
-      void client.invalidateQueries({ queryKey: ["tickets"] });
+      client.setQueryData(
+        ticketKeys.detail(ticket.id, context?.principal),
+        updated,
+      );
+      void client.invalidateQueries({
+        queryKey: ticketKeys.list(context?.principal),
+      });
       reset({ body: "" });
       setNotice(internal ? t("internalAdded") : t("replySent"));
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
       setNotice("");
       if (error instanceof ApiError && error.status === 409)
-        void client.invalidateQueries({ queryKey: ["ticket", ticket.id] });
+        void client.invalidateQueries({
+          queryKey: ticketKeys.detail(ticket.id, context?.principal),
+        });
     },
   });
   const messages = ticket.messages.filter(

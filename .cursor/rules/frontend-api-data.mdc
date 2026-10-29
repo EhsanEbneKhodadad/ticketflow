@@ -1,0 +1,15 @@
+---
+description: TicketFlow generated API and TanStack Query conventions
+globs: apps/web/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Generated API and Remote State
+
+- Use types, SDK operations, and TanStack Query options from `@ticketflow/api-client`.
+- Regenerate with `pnpm api:generate`; never hand-edit `packages/api-client/src/generated`.
+- Keep interactive query options and query keys generated; keep cache invalidation and UI feedback in the feature module.
+- Keep mutations on generated mutation options. Avoid mutation keys because variables may contain credentials or private bodies.
+- Protected query inputs must carry `X-TicketFlow-User` so the generated query key separates each principal's private data.
+- Keep all generated calls on the configured shared transport. It enforces same-origin cookie auth, CSRF, refresh, and account-change behavior.
+- Do not store session tokens in browser storage or add token auth for this cookie-based app.

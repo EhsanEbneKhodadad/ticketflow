@@ -1,32 +1,24 @@
 "use client";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { components } from "@ticketflow/api-client";
-import { useAuth, type User } from "@/features/auth/auth-provider";
-import { api } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { getApiV1DashboardOptions } from "@ticketflow/api-client";
+import { useAuth } from "@/features/auth/auth-provider";
+import "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
 import { Button } from "@/components/ui/button";
 
-type DashboardView = components["schemas"]["DashboardView"];
 export function Dashboard() {
   const t = useTranslations("Dashboard");
   const errorMessage = useErrorMessage();
   const { user } = useAuth();
-  const client = useQueryClient();
   const principal = user?.id;
   const query = useQuery({
-    queryKey: ["dashboard", principal],
+    ...getApiV1DashboardOptions({
+      headers: principal ? { "X-TicketFlow-User": principal } : undefined,
+    }),
     enabled: !!principal,
     retry: false,
-    queryFn: ({ signal }) =>
-      api<DashboardView>("/dashboard", {
-        signal,
-        expectedPrincipalId: principal,
-        isCurrent: () =>
-          !!principal &&
-          client.getQueryData<User>(["session"])?.id === principal,
-      }),
   });
   const staff = user?.role !== "Customer";
   const cards: Array<[string, number | string]> = query.data

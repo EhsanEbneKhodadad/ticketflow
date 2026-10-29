@@ -4,21 +4,25 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "@/i18n/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getApiV1AgentsOptions,
+  getApiV1CategoriesOptions,
+  getApiV1SearchTicketsOptions,
+} from "@ticketflow/api-client";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth, type User } from "@/features/auth/auth-provider";
+import { useAuth } from "@/features/auth/auth-provider";
 import {
   ticketStatuses,
   ticketPriorities,
   dateLabel,
 } from "@/features/tickets/api";
-import { api, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
-import type { components } from "@ticketflow/api-client";
 import {
   searchParameters,
-  searchTickets,
+  searchRequest,
   type SearchSegment,
   type SearchSort,
 } from "./api";
@@ -43,43 +47,32 @@ export function TicketSearch({ params }: { params: Record<string, string> }) {
   const statusText = useTranslations("TicketStatus");
   const priorityText = useTranslations("Priority");
   const { user } = useAuth();
-  const client = useQueryClient();
   const router = useRouter();
   const [validation, setValidation] = useState("");
   const queryParams = searchParameters(params);
-  const serialized = queryParams.toString();
   const page = Number(queryParams.get("page"));
   const principal = user?.id;
-  const isCurrent = () =>
-    !!principal && client.getQueryData<User>(["session"])?.id === principal;
   const { register, handleSubmit, control } = useForm<Record<string, string>>({
     defaultValues: { ...params, sort: params.sort ?? "relevance" },
   });
   const query = useQuery({
-    queryKey: ["search", principal, serialized],
-    queryFn: ({ signal }) =>
-      searchTickets(queryParams, signal, principal!, isCurrent),
+    ...getApiV1SearchTicketsOptions({
+      query: searchRequest(queryParams),
+      headers: principal ? { "X-TicketFlow-User": principal } : undefined,
+    }),
     enabled: !!user,
     retry: false,
   });
   const categories = useQuery({
-    queryKey: ["categories", principal],
-    queryFn: ({ signal }) =>
-      api<components["schemas"]["CategoryView"][]>("/categories", {
-        signal,
-        isCurrent,
-        expectedPrincipalId: principal,
-      }),
+    ...getApiV1CategoriesOptions({
+      headers: principal ? { "X-TicketFlow-User": principal } : undefined,
+    }),
     enabled: !!user,
   });
   const agents = useQuery({
-    queryKey: ["agents", principal],
-    queryFn: ({ signal }) =>
-      api<components["schemas"]["AgentView"][]>("/agents", {
-        signal,
-        isCurrent,
-        expectedPrincipalId: principal,
-      }),
+    ...getApiV1AgentsOptions({
+      headers: principal ? { "X-TicketFlow-User": principal } : undefined,
+    }),
     enabled: !!user && user.role !== "Customer",
   });
   const sortLabels: Record<SearchSort, string> = {

@@ -7,12 +7,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getApiV1CategoriesOptions } from "@ticketflow/api-client";
 import { ArrowLeft, ArrowRight, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { User } from "@/features/auth/auth-provider";
+import { sessionQueryKey, type User } from "@/features/auth/auth-provider";
 import { ApiError } from "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
-import { ticketsApi, ticketPriorities, type Ticket } from "./api";
+import { ticketsApi, ticketKeys, ticketPriorities, type Ticket } from "./api";
 
 export function TicketForm({
   ticket,
@@ -38,9 +39,12 @@ export function TicketForm({
   const [baseVersion] = useState(ticket?.version);
   const router = useRouter();
   const client = useQueryClient();
+  const principal = client.getQueryData<User>(sessionQueryKey())?.id;
   const categories = useQuery({
-    queryKey: ["categories"],
-    queryFn: ticketsApi.categories,
+    ...getApiV1CategoriesOptions({
+      headers: principal ? { "X-TicketFlow-User": principal } : undefined,
+    }),
+    queryFn: () => ticketsApi.categories(principal),
   });
   const {
     register,
@@ -57,7 +61,9 @@ export function TicketForm({
     },
   });
   const mutation = useMutation({
-    onMutate: () => ({ principal: client.getQueryData<User>(["session"])?.id }),
+    onMutate: () => ({
+      principal: client.getQueryData<User>(sessionQueryKey())?.id,
+    }),
     mutationFn: (values: z.infer<typeof schema>) => {
       const input = {
         title: values.title,
@@ -69,23 +75,39 @@ export function TicketForm({
           .filter(Boolean),
       };
       return ticket
-        ? ticketsApi.edit(ticket.id, {
-            ...input,
-            expectedVersion: baseVersion!,
-          })
-        : ticketsApi.create({ ...input, priority: values.priority });
+        ? ticketsApi.edit(
+            ticket.id,
+            {
+              ...input,
+              expectedVersion: baseVersion!,
+            },
+            client.getQueryData<User>(sessionQueryKey())?.id,
+          )
+        : ticketsApi.create(
+            { ...input, priority: values.priority },
+            client.getQueryData<User>(sessionQueryKey())?.id,
+          );
     },
     onSuccess: (saved, _variables, context) => {
-      if (context?.principal !== client.getQueryData<User>(["session"])?.id)
+      if (
+        context?.principal !== client.getQueryData<User>(sessionQueryKey())?.id
+      )
         return;
-      client.setQueryData(["ticket", saved.id, context?.principal], saved);
-      void client.invalidateQueries({ queryKey: ["tickets"] });
+      client.setQueryData(
+        ticketKeys.detail(saved.id, context?.principal),
+        saved,
+      );
+      void client.invalidateQueries({
+        queryKey: ticketKeys.list(context?.principal),
+      });
       if (onCancel) onCancel();
       else router.push("/tickets/" + saved.id);
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
       if (error instanceof ApiError && error.status === 409 && ticket)
-        void client.invalidateQueries({ queryKey: ["ticket", ticket.id] });
+        void client.invalidateQueries({
+          queryKey: ticketKeys.detail(ticket.id, context?.principal),
+        });
     },
   });
   return (

@@ -5,16 +5,26 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { components } from "@ticketflow/api-client";
-import { useAuth, type User } from "@/features/auth/auth-provider";
-import { api } from "@/lib/api";
+import {
+  getApiV1AdminCategoriesOptions,
+  getApiV1AdminCategoriesQueryKey,
+  getApiV1AdminUsersOptions,
+  getApiV1AdminUsersQueryKey,
+  postApiV1AdminCategoriesMutation,
+  putApiV1AdminCategoriesByIdMutation,
+  patchApiV1AdminUsersByIdRoleMutation,
+  type AdminCategoryView,
+  type AdminUserView,
+  type CategoryRequest,
+  type ChangeRoleRequest,
+} from "@ticketflow/api-client";
+import { useAuth } from "@/features/auth/auth-provider";
+import "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
 import { Button } from "@/components/ui/button";
 
-type Category = components["schemas"]["AdminCategoryView"];
-type AdminUser = components["schemas"]["AdminUserView"];
-type CategoryRequest = components["schemas"]["CategoryRequest"];
-type RoleRequest = components["schemas"]["ChangeRoleRequest"];
+type Category = AdminCategoryView;
+type AdminUser = AdminUserView;
 export function Admin() {
   const t = useTranslations("Admin");
   const errorMessage = useErrorMessage();
@@ -22,22 +32,17 @@ export function Admin() {
   const client = useQueryClient();
   const principal = user?.id;
   const enabled = user?.role === "Admin";
-  const isCurrent = () =>
-    !!principal && client.getQueryData<User>(["session"])?.id === principal;
-  const options = { expectedPrincipalId: principal, isCurrent };
+  const headers = principal ? { "X-TicketFlow-User": principal } : undefined;
+  const options = { headers };
   const categories = useQuery({
-    queryKey: ["admin", principal, "categories"],
+    ...getApiV1AdminCategoriesOptions(options),
     enabled,
     retry: false,
-    queryFn: ({ signal }) =>
-      api<Category[]>("/admin/categories", { ...options, signal }),
   });
   const users = useQuery({
-    queryKey: ["admin", principal, "users"],
+    ...getApiV1AdminUsersOptions(options),
     enabled,
     retry: false,
-    queryFn: ({ signal }) =>
-      api<AdminUser[]>("/admin/users", { ...options, signal }),
   });
   if (!enabled)
     return (
@@ -62,7 +67,7 @@ export function Admin() {
           options={options}
           onSaved={() =>
             void client.invalidateQueries({
-              queryKey: ["admin", principal, "categories"],
+              queryKey: getApiV1AdminCategoriesQueryKey(options),
             })
           }
         />
@@ -83,7 +88,7 @@ export function Admin() {
             options={options}
             onSaved={() =>
               void client.invalidateQueries({
-                queryKey: ["admin", principal, "categories"],
+                queryKey: getApiV1AdminCategoriesQueryKey(options),
               })
             }
           />
@@ -107,7 +112,7 @@ export function Admin() {
             options={options}
             onSaved={() =>
               void client.invalidateQueries({
-                queryKey: ["admin", principal, "users"],
+                queryKey: getApiV1AdminUsersQueryKey(options),
               })
             }
           />
@@ -116,7 +121,7 @@ export function Admin() {
     </section>
   );
 }
-type Options = { expectedPrincipalId?: string; isCurrent: () => boolean };
+type Options = { headers?: Record<string, string> };
 function CategoryForm({
   category,
   options,
@@ -145,14 +150,22 @@ function CategoryForm({
   const [notice, setNotice] = useState("");
   const mutation = useMutation({
     mutationFn: (input: CategoryRequest) =>
-      api<Category>(
-        category ? `/admin/categories/${category.id}` : "/admin/categories",
-        {
-          ...options,
-          method: category ? "PUT" : "POST",
-          body: JSON.stringify(input),
-        },
-      ),
+      category
+        ? putApiV1AdminCategoriesByIdMutation(options).mutationFn!(
+            {
+              path: { id: category.id },
+              body: input,
+              throwOnError: true,
+            },
+            undefined as never,
+          )
+        : postApiV1AdminCategoriesMutation(options).mutationFn!(
+            {
+              body: input,
+              throwOnError: true,
+            },
+            undefined as never,
+          ),
     onSuccess: (value) => {
       reset({
         name: category ? value.name : "",
@@ -229,12 +242,15 @@ function UserRole({
   const [role, setRole] = useState(account.role);
   const [notice, setNotice] = useState("");
   const mutation = useMutation({
-    mutationFn: (input: RoleRequest) =>
-      api<AdminUser>(`/admin/users/${account.id}/role`, {
-        ...options,
-        method: "PATCH",
-        body: JSON.stringify(input),
-      }),
+    mutationFn: (input: ChangeRoleRequest) =>
+      patchApiV1AdminUsersByIdRoleMutation(options).mutationFn!(
+        {
+          path: { id: account.id },
+          body: input,
+          throwOnError: true,
+        },
+        undefined as never,
+      ),
     onSuccess: () => {
       setNotice(t("roleUpdated"));
       onSaved();

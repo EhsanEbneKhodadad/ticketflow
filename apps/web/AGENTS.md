@@ -6,10 +6,14 @@
 - Default to Server Components. Add "use client" only where browser interaction requires it.
 - Use semantic HTML, visible keyboard focus, descriptive labels, and responsive layouts.
 - Include loading, empty, error, and permission-denied states when adding data-driven screens.
-- Consume types from @ticketflow/api-client; do not copy API DTOs into the frontend.
+- Consume types and operations from @ticketflow/api-client; do not copy API DTOs into the frontend.
+- Generate API artifacts with `pnpm api:generate`; never edit files under `packages/api-client/src/generated` by hand.
+- Use generated TanStack Query options and query keys for remote reads, and generated mutation options for writes. Keep feature-specific invalidation and UI behavior in the feature module.
+- Route generated SDK requests through the shared API transport so cookie auth, CSRF, refresh, and expected-principal checks remain active.
+- Include the authenticated principal in protected query inputs/keys. Do not cache mutation bodies in mutation keys.
 - API authorization is mandatory even when UI controls are hidden.
 - Never place tokens in localStorage or expose server secrets through NEXT_PUBLIC variables.
-- Use TanStack Query for interactive remote state and React Hook Form/Zod for forms when those features arrive.
+- Use TanStack Query for interactive remote state and React Hook Form/Zod for forms.
 - Test observable user behavior using Testing Library; add Cypress journeys with the ticket workflow.
 - Keep the foundation page honest: no fabricated metrics or working-feature claims.
 - Run root pnpm lint, typecheck, test, build, and format:check.

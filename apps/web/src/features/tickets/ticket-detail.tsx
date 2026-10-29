@@ -3,12 +3,13 @@ import { Link } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getApiV1TicketsByIdOptions } from "@ticketflow/api-client";
 import { ArrowLeft, Pencil, Clock, Tag, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ApiError } from "@/lib/api";
 import { useErrorMessage } from "@/lib/use-error-message";
-import { ticketsApi, initials, timeLabel, type Ticket } from "./api";
+import { initials, timeLabel, type Ticket } from "./api";
 import { Conversation } from "./conversation";
 import { TicketManagement } from "./ticket-management";
 import { AttachmentPanel } from "@/features/attachments/attachment-panel";
@@ -69,8 +70,10 @@ export function TicketDetail({ id }: { id: string }) {
   };
   const { user } = useAuth();
   const query = useQuery({
-    queryKey: ["ticket", id, user?.id],
-    queryFn: () => ticketsApi.get(id),
+    ...getApiV1TicketsByIdOptions({
+      path: { id },
+      headers: user ? { "X-TicketFlow-User": user.id } : undefined,
+    }),
     enabled: !!user,
   });
   const [editing, setEditing] = useState(false);

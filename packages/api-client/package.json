@@ -8,10 +8,13 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "generate": "openapi-typescript http://localhost:5080/openapi/v1.json -o src/schema.d.ts"
+    "generate": "openapi-ts -f openapi-ts.config.ts && openapi-typescript http://localhost:5080/openapi/v1.json -o src/schema.d.ts"
   },
   "devDependencies": {
-    "typescript": "5.9.3",
-    "openapi-typescript": "7.10.1"
+    "@hey-api/openapi-ts": "0.99.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.105.0"
   }
 }

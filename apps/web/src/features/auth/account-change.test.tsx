@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider, useAuth } from "./auth-provider";
+import { AuthProvider, sessionQueryKey, useAuth } from "./auth-provider";
 import { AuthScreen } from "./auth-screen";
 import { api } from "@/lib/api";
 const mockReplace = jest.fn();
@@ -16,7 +16,7 @@ it("clears stale private queries and drafts on account change without logging ou
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  client.setQueryData(["session"], {
+  client.setQueryData(sessionQueryKey(), {
     id: "staff-A",
     name: "Staff A",
     role: "Agent",
@@ -71,7 +71,7 @@ it("clears stale private queries and drafts on account change without logging ou
   );
   expect(await screen.findByRole("alert")).toHaveTextContent("account changed");
   expect(client.getQueryData(["attachments", "staff-A"])).toBeUndefined();
-  expect(client.getQueryData(["session"])).toBeNull();
+  expect(client.getQueryData(sessionQueryKey())).toBeNull();
   expect(mockReplace).toHaveBeenCalledWith("/login");
   expect(jest.mocked(fetch).mock.calls.map(([path]) => path)).toEqual([
     "/api/v1/auth/csrf",
