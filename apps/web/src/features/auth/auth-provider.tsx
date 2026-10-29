@@ -6,7 +6,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { hashKey, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { useRouter } from "@/i18n/navigation";
 import {
   getApiV1AuthMe,
@@ -26,10 +30,17 @@ type Login = LoginRequest;
 type Registration = RegisterRequest;
 export const sessionQueryKey = () => getApiV1AuthMeQueryKey();
 
-function clearPrivateQueries(client: ReturnType<typeof useQueryClient>) {
-  const sessionHash = hashKey(sessionQueryKey());
-  const isPrivateQuery = (query: { queryHash: string }) =>
-    query.queryHash !== sessionHash;
+function clearPrivateQueries(client: QueryClient) {
+  const sessionOperation = sessionQueryKey()[0]._id;
+  const isPrivateQuery = (query: { queryKey: readonly unknown[] }) => {
+    const key = query.queryKey[0];
+    const isSessionQuery =
+      typeof key === "object" &&
+      key !== null &&
+      "_id" in key &&
+      key._id === sessionOperation;
+    return !isSessionQuery;
+  };
   return client.cancelQueries({ predicate: isPrivateQuery }).then(() => {
     client.removeQueries({ predicate: isPrivateQuery });
   });
