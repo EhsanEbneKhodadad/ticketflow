@@ -2,10 +2,11 @@ import "@testing-library/jest-dom";
 import mockEnglishMessages from "./messages/en.json";
 
 jest.mock("next-intl", () => {
-  const actual = jest.requireActual<typeof import("next-intl")>("next-intl");
+  const React = jest.requireActual<typeof import("react")>("react");
   return {
-    ...actual,
     useLocale: () => "en",
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
     useTranslations: (namespace?: string) => (key: string) => {
       const value = namespace
         ? namespace
