@@ -13,7 +13,6 @@ export class ApiError extends Error {
 }
 type Options = Omit<RequestInit, "headers"> & {
   headers?: Record<string, string>;
-  bodyFactory?: () => BodyInit | null;
   isCurrent?: () => boolean;
   expectedPrincipalId?: string;
 };
@@ -66,7 +65,6 @@ async function perform(path: string, options: Options = {}) {
     headers["X-CSRF-TOKEN"] = await csrfToken();
   assertCurrent(options);
   const {
-    bodyFactory,
     isCurrent: _isCurrent,
     expectedPrincipalId: _expectedPrincipalId,
     ...request
@@ -75,7 +73,6 @@ async function perform(path: string, options: Options = {}) {
   void _expectedPrincipalId;
   return fetch("/api/v1" + path, {
     ...request,
-    body: bodyFactory ? bodyFactory() : request.body,
     method,
     headers,
     credentials: "same-origin",
@@ -103,7 +100,9 @@ export async function apiClientFetch(
   const response = await apiResponse(path, {
     method: request.method,
     headers: Object.fromEntries(request.headers.entries()),
-    bodyFactory: request.body ? () => request.clone().body : undefined,
+    // Browser streaming uploads require duplex/HTTP support that the proxy does
+    // not provide. Buffer once so JSON and multipart bytes also survive retries.
+    body: request.body ? await request.clone().arrayBuffer() : undefined,
     signal: request.signal,
     expectedPrincipalId: request.headers.get("X-TicketFlow-User") ?? undefined,
   });

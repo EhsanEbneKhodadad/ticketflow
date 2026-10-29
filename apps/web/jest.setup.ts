@@ -1,5 +1,8 @@
 import "@testing-library/jest-dom";
 import {
+  Blob as EdgeBlob,
+  File as EdgeFile,
+  FormData as EdgeFormData,
   Headers as EdgeHeaders,
   Request as EdgeRequest,
   Response as EdgeResponse,
@@ -7,6 +10,9 @@ import {
 import mockEnglishMessages from "./messages/en.json";
 
 Object.assign(globalThis, {
+  Blob: EdgeBlob,
+  File: EdgeFile,
+  FormData: EdgeFormData,
   Headers: EdgeHeaders,
   Request: EdgeRequest,
   Response: EdgeResponse,
