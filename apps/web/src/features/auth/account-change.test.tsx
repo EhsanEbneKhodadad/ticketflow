@@ -5,6 +5,9 @@ import { AuthScreen } from "./auth-screen";
 import { api } from "@/lib/api";
 const mockReplace = jest.fn();
 jest.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
   usePathname: () => "/login",
   useRouter: () => ({ replace: mockReplace, push: jest.fn() }),
 }));
