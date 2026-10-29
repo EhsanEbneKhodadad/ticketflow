@@ -1211,7 +1211,25 @@ textarea::placeholder {
   }
   .workspace-header {
     height: 64px;
-    padding-inline: 18px;
+    padding-inline: 12px;
+    gap: 8px;
+  }
+  .workspace-breadcrumb {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .workspace-breadcrumb strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .role-pill {
+    flex-shrink: 0;
+  }
+  .workspace-header .language-switcher select {
+    max-width: 78px;
+    padding-inline: 6px 18px;
   }
   .workspace-main {
     padding: 25px 18px 50px;
